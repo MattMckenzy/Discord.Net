@@ -40,6 +40,6 @@ namespace Discord
         /// <summary>
         ///     A HTML embed type.
         /// </summary>
-        Html,
+        Html
     }
 }

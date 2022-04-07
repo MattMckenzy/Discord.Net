@@ -71,7 +71,7 @@ namespace Discord.Interactions
                             break;
                     }
 
-                await InteractionService._autocompleteHandlerExecutedEvent.InvokeAsync(this, context, result).ConfigureAwait(false);
+                InteractionService.OnAutocompleteHandlerExecuted(this, context, result);
                 return result;
             }
             catch (Exception ex)
@@ -83,7 +83,7 @@ namespace Discord.Interactions
                 await InteractionService._cmdLogger.ErrorAsync(ex).ConfigureAwait(false);
 
                 var result = ExecuteResult.FromError(ex);
-                await InteractionService._autocompleteHandlerExecutedEvent.InvokeAsync(this, context, result).ConfigureAwait(false);
+                InteractionService.OnAutocompleteHandlerExecuted(this, context, result);
 
                 if (InteractionService._throwOnError)
                 {

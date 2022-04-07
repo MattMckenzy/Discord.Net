@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace Discord.Net.ED25519.Ed25519Ref10
 {
@@ -63,7 +63,6 @@ namespace Discord.Net.ED25519.Ed25519Ref10
 
         public static void ge_scalarmult_base(out GroupElementP3 h, byte[] a, int offset)
         {
-            // todo: Perhaps remove this allocation
             var e = new sbyte[64];
             sbyte carry;
 

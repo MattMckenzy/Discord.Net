@@ -12,8 +12,7 @@ namespace Discord.Webhook
     /// <summary> A client responsible for connecting as a Webhook. </summary>
     public class DiscordWebhookClient : IDisposable
     {
-        public event Func<LogMessage, Task> Log { add { _logEvent.Add(value); } remove { _logEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<LogMessage, Task>> _logEvent = new AsyncEvent<Func<LogMessage, Task>>();
+        public event EventHandler<LogMessage> Log;
 
         private readonly ulong _webhookId;
         internal IWebhook Webhook;
@@ -69,7 +68,7 @@ namespace Discord.Webhook
         {
             ApiClient = CreateApiClient(config);
             LogManager = new LogManager(config.LogLevel);
-            LogManager.Message += async msg => await _logEvent.InvokeAsync(msg).ConfigureAwait(false);
+            LogManager.Message += (sender, msg) => Log.Invoke(sender, msg);
 
             _restLogger = LogManager.CreateLogger("Rest");
 
@@ -80,7 +79,7 @@ namespace Discord.Webhook
                 else
                     await _restLogger.WarningAsync($"Rate limit triggered: {endpoint} {(id.IsHashBucket ? $"(Bucket: {id.BucketHash})" : "")}").ConfigureAwait(false);
             };
-            ApiClient.SentRequest += async (method, endpoint, millis) => await _restLogger.VerboseAsync($"{method} {endpoint}: {millis} ms").ConfigureAwait(false);
+            ApiClient.SentRequest += async (sender, args) => await _restLogger.VerboseAsync($"{args.Method} {args.Endpoint}: {args.MillisecondsTaken} ms").ConfigureAwait(false);
         }
         private static API.DiscordRestApiClient CreateApiClient(DiscordRestConfig config)
             => new API.DiscordRestApiClient(config.RestClientProvider, DiscordRestConfig.UserAgent, useSystemClock: config.UseSystemClock, defaultRatelimitCallback: config.DefaultRatelimitCallback);

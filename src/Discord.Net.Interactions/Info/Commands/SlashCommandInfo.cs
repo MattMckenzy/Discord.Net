@@ -37,7 +37,7 @@ namespace Discord.Interactions
         /// </summary>
         public IReadOnlyCollection<SlashCommandParameterInfo> FlattenedParameters { get; }
 
-        internal SlashCommandInfo (Builders.SlashCommandBuilder builder, ModuleInfo module, InteractionService commandService) : base(builder, module, commandService)
+        internal SlashCommandInfo(Builders.SlashCommandBuilder builder, ModuleInfo module, InteractionService commandService) : base(builder, module, commandService)
         {
             Description = builder.Description;
             DefaultPermission = builder.DefaultPermission;
@@ -52,9 +52,9 @@ namespace Discord.Interactions
         }
 
         /// <inheritdoc/>
-        public override async Task<IResult> ExecuteAsync (IInteractionContext context, IServiceProvider services)
+        public override async Task<IResult> ExecuteAsync(IInteractionContext context, IServiceProvider services)
         {
-            if(context.Interaction is not ISlashCommandInteraction slashCommand)
+            if (context.Interaction is not ISlashCommandInteraction slashCommand)
                 return ExecuteResult.FromError(InteractionCommandError.ParseFailed, $"Provided {nameof(IInteractionContext)} doesn't belong to a Slash Command Interaction");
 
             var options = slashCommand.Data.Options;
@@ -65,7 +65,7 @@ namespace Discord.Interactions
             return await ExecuteAsync(context, Parameters, options?.ToList(), services);
         }
 
-        private async Task<IResult> ExecuteAsync (IInteractionContext context, IEnumerable<SlashCommandParameterInfo> paramList,
+        private async Task<IResult> ExecuteAsync(IInteractionContext context, IEnumerable<SlashCommandParameterInfo> paramList,
             List<IApplicationCommandInteractionDataOption> argList, IServiceProvider services)
         {
             try
@@ -88,7 +88,7 @@ namespace Discord.Interactions
                 }
                 return await RunAsync(context, args, services).ConfigureAwait(false);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return await InvokeEventAndReturn(context, ExecuteResult.FromError(ex)).ConfigureAwait(false);
             }
@@ -131,8 +131,11 @@ namespace Discord.Interactions
             return ParseResult.FromSuccess(readResult.Value);
         }
 
-        protected override Task InvokeModuleEvent (IInteractionContext context, IResult result)
-            => CommandService._slashCommandExecutedEvent.InvokeAsync(this, context, result);
+        protected override Task InvokeModuleEvent(IInteractionContext context, IResult result)
+        {
+            CommandService.OnSlashCommandExecuted(this, context, result);
+            return Task.CompletedTask;
+        } 
 
         protected override string GetLogString (IInteractionContext context)
         {

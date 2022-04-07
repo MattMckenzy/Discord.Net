@@ -11,13 +11,9 @@ namespace Discord.Rest
     public abstract class BaseDiscordClient : IDiscordClient
     {
         #region BaseDiscordClient
-        public event Func<LogMessage, Task> Log { add { _logEvent.Add(value); } remove { _logEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<LogMessage, Task>> _logEvent = new AsyncEvent<Func<LogMessage, Task>>();
-
-        public event Func<Task> LoggedIn { add { _loggedInEvent.Add(value); } remove { _loggedInEvent.Remove(value); } }
-        private readonly AsyncEvent<Func<Task>> _loggedInEvent = new AsyncEvent<Func<Task>>();
-        public event Func<Task> LoggedOut { add { _loggedOutEvent.Add(value); } remove { _loggedOutEvent.Remove(value); } }
-        private readonly AsyncEvent<Func<Task>> _loggedOutEvent = new AsyncEvent<Func<Task>>();
+        public event EventHandler<LogMessage> Log;
+        public event EventHandler LoggedIn;
+        public event EventHandler LoggedOut;
 
         internal readonly Logger _restLogger;
         private readonly SemaphoreSlim _stateLock;
@@ -42,7 +38,7 @@ namespace Discord.Rest
         {
             ApiClient = client;
             LogManager = new LogManager(config.LogLevel);
-            LogManager.Message += async msg => await _logEvent.InvokeAsync(msg).ConfigureAwait(false);
+            LogManager.Message += (sender, msg) => Log.Invoke(sender, msg);
 
             _stateLock = new SemaphoreSlim(1, 1);
             _restLogger = LogManager.CreateLogger("Rest");
@@ -57,7 +53,7 @@ namespace Discord.Rest
                 else
                     await _restLogger.WarningAsync($"Rate limit triggered: {endpoint} {(id.IsHashBucket ? $"(Bucket: {id.BucketHash})" : "")}").ConfigureAwait(false);
             };
-            ApiClient.SentRequest += async (method, endpoint, millis) => await _restLogger.VerboseAsync($"{method} {endpoint}: {millis} ms").ConfigureAwait(false);
+            ApiClient.SentRequest += async (_, eventArgs) => await _restLogger.VerboseAsync($"{eventArgs.Method} {eventArgs.Endpoint}: {eventArgs.MillisecondsTaken} ms").ConfigureAwait(false);
         }
 
         public async Task LoginAsync(TokenType tokenType, string token, bool validateToken = true)
@@ -108,7 +104,7 @@ namespace Discord.Rest
                 throw;
             }
 
-            await _loggedInEvent.InvokeAsync().ConfigureAwait(false);
+            LoggedIn.Invoke(this, EventArgs.Empty);
         }
         internal virtual Task OnLoginAsync(TokenType tokenType, string token)
             => Task.Delay(0);
@@ -133,7 +129,7 @@ namespace Discord.Rest
             CurrentUser = null;
             LoginState = LoginState.LoggedOut;
 
-            await _loggedOutEvent.InvokeAsync().ConfigureAwait(false);
+            LoggedOut.Invoke(this, EventArgs.Empty);
         }
         internal virtual Task OnLogoutAsync()
             => Task.Delay(0);

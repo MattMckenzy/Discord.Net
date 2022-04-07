@@ -8,19 +8,19 @@ namespace Discord.WebSocket
     {
         #region General
         /// <summary> Fired when connected to the Discord gateway. </summary>
-        public event Func<Task> Connected
+        public event EventHandler Connected;
+        protected virtual void OnConnected()
         {
-            add { _connectedEvent.Add(value); }
-            remove { _connectedEvent.Remove(value); }
+            Connected?.Invoke(this, EventArgs.Empty);
         }
-        private readonly AsyncEvent<Func<Task>> _connectedEvent = new AsyncEvent<Func<Task>>();
+
         /// <summary> Fired when disconnected to the Discord gateway. </summary>
-        public event Func<Exception, Task> Disconnected
+        public event EventHandler<Exception> Disconnected;
+        protected virtual void OnDisconnected(Exception eventArgs)
         {
-            add { _disconnectedEvent.Add(value); }
-            remove { _disconnectedEvent.Remove(value); }
+            Disconnected?.Invoke(this, eventArgs);
         }
-        private readonly AsyncEvent<Func<Exception, Task>> _disconnectedEvent = new AsyncEvent<Func<Exception, Task>>();
+
         /// <summary>
         ///     Fired when guild data has finished downloading.
         /// </summary>
@@ -28,19 +28,23 @@ namespace Discord.WebSocket
         ///     It is possible that some guilds might be unsynced if <see cref="DiscordSocketConfig.MaxWaitBetweenGuildAvailablesBeforeReady" />
         ///     was not long enough to receive all GUILD_AVAILABLEs before READY.
         /// </remarks>
-        public event Func<Task> Ready
+        public event EventHandler Ready;
+        protected virtual void OnReady()
         {
-            add { _readyEvent.Add(value); }
-            remove { _readyEvent.Remove(value); }
+            Ready?.Invoke(this, EventArgs.Empty);
         }
-        private readonly AsyncEvent<Func<Task>> _readyEvent = new AsyncEvent<Func<Task>>();
+
         /// <summary> Fired when a heartbeat is received from the Discord gateway. </summary>
-        public event Func<int, int, Task> LatencyUpdated
+        public event EventHandler<LatencyUpdatedArguments> LatencyUpdated;
+        public class LatencyUpdatedArguments
         {
-            add { _latencyUpdatedEvent.Add(value); }
-            remove { _latencyUpdatedEvent.Remove(value); }
+            public int OriginalLatency { get; set; }
+            public int UpdatedLatency { get; set; }
         }
-        private readonly AsyncEvent<Func<int, int, Task>> _latencyUpdatedEvent = new AsyncEvent<Func<int, int, Task>>();
+        protected virtual void OnLatencyUpdated(LatencyUpdatedArguments eventArgs)
+        {
+            LatencyUpdated?.Invoke(this, eventArgs);
+        }
 
         internal DiscordSocketClient(DiscordSocketConfig config, DiscordRestApiClient client) : base(config, client)
         {

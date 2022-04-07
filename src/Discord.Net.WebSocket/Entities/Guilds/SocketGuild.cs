@@ -1616,7 +1616,7 @@ namespace Discord.WebSocket
                 if (_audioClient == null)
                 {
                     var audioClient = new AudioClient(this, Discord.GetAudioId(), channelId);
-                    audioClient.Disconnected += async ex =>
+                    audioClient.Disconnected += async (_, ex) =>
                     {
                         if (!promise.Task.IsCompleted)
                         {
@@ -1631,12 +1631,11 @@ namespace Discord.WebSocket
                             return;
                         }
                     };
-                    audioClient.Connected += () =>
+                    audioClient.Connected += (_, __) =>
                     {
 #pragma warning disable IDISP001
-                        var _ = promise.TrySetResultAsync(_audioClient);
+                        var ____ = promise.TrySetResultAsync(_audioClient);
 #pragma warning restore IDISP001
-                        return Task.Delay(0);
                     };
 #pragma warning disable IDISP003
                     _audioClient = audioClient;
@@ -1724,7 +1723,6 @@ namespace Discord.WebSocket
 
         internal async Task FinishConnectAudio(string url, string token)
         {
-            //TODO: Mem Leak: Disconnected/Connected handlers aren't cleaned up
             var voiceState = GetVoiceState(Discord.CurrentUser.Id).Value;
 
             await _audioLock.WaitAsync().ConfigureAwait(false);
@@ -1904,9 +1902,7 @@ namespace Discord.WebSocket
         /// <inheritdoc />
         IRole IGuild.GetRole(ulong id)
             => GetRole(id);
-        /// <inheritdoc />
-        async Task<IRole> IGuild.CreateRoleAsync(string name, GuildPermissions? permissions, Color? color, bool isHoisted, RequestOptions options)
-            => await CreateRoleAsync(name, permissions, color, isHoisted, false, options).ConfigureAwait(false);
+
         /// <inheritdoc />
         async Task<IRole> IGuild.CreateRoleAsync(string name, GuildPermissions? permissions, Color? color, bool isHoisted, bool isMentionable, RequestOptions options)
             => await CreateRoleAsync(name, permissions, color, isHoisted, isMentionable, options).ConfigureAwait(false);

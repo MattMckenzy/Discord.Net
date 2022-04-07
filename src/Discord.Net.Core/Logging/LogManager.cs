@@ -8,8 +8,7 @@ namespace Discord.Logging
         public LogSeverity Level { get; }
         private Logger ClientLogger { get; }
 
-        public event Func<LogMessage, Task> Message { add { _messageEvent.Add(value); } remove { _messageEvent.Remove(value); } }
-        private readonly AsyncEvent<Func<LogMessage, Task>> _messageEvent = new AsyncEvent<Func<LogMessage, Task>>();
+        public event EventHandler<LogMessage> Message;
 
         public LogManager(LogSeverity minSeverity)
         {
@@ -17,39 +16,48 @@ namespace Discord.Logging
             ClientLogger = new Logger(this, "Discord");
         }
 
-        public async Task LogAsync(LogSeverity severity, string source, Exception ex)
+        public Task LogAsync(LogSeverity severity, string source, Exception ex)
         {
             try
             {
                 if (severity <= Level)
-                    await _messageEvent.InvokeAsync(new LogMessage(severity, source, null, ex)).ConfigureAwait(false);
+                    Message.Invoke(this, new LogMessage(severity, source, null, ex));
             }
             catch
             {
                 // ignored
             }
+
+            return Task.CompletedTask;
         }
-        public async Task LogAsync(LogSeverity severity, string source, string message, Exception ex = null)
+        public Task LogAsync(LogSeverity severity, string source, string message, Exception ex = null)
         {
             try
             {
                 if (severity <= Level)
-                await _messageEvent.InvokeAsync(new LogMessage(severity, source, message, ex)).ConfigureAwait(false);
+                    Message.Invoke(this, new LogMessage(severity, source, message, ex));
             }
             catch
             {
                 // ignored
             }
+
+            return Task.CompletedTask;
         }
 
-        public async Task LogAsync(LogSeverity severity, string source, FormattableString message, Exception ex = null)
+        public Task LogAsync(LogSeverity severity, string source, FormattableString message, Exception ex = null)
         {
             try
             {
                 if (severity <= Level)
-                    await _messageEvent.InvokeAsync(new LogMessage(severity, source, message.ToString(), ex)).ConfigureAwait(false);
+                    Message.Invoke(this, new LogMessage(severity, source, message.ToString(), ex));
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
+
+            return Task.CompletedTask;
         }
 
 

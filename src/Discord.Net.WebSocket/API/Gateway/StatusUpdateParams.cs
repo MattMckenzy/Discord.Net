@@ -13,6 +13,6 @@ namespace Discord.API.Gateway
         [JsonProperty("afk")]
         public bool IsAFK { get; set; }
         [JsonProperty("activities")]
-        public object[] Activities { get; set; } // TODO, change to interface later
+        public object[] Activities { get; set; } 
     }
 }

@@ -8,10 +8,14 @@ namespace Discord
 {
     internal class ConnectionManager : IDisposable
     {
-        public event Func<Task> Connected { add { _connectedEvent.Add(value); } remove { _connectedEvent.Remove(value); } }
-        private readonly AsyncEvent<Func<Task>> _connectedEvent = new AsyncEvent<Func<Task>>();
-        public event Func<Exception, bool, Task> Disconnected { add { _disconnectedEvent.Add(value); } remove { _disconnectedEvent.Remove(value); } }
-        private readonly AsyncEvent<Func<Exception, bool, Task>> _disconnectedEvent = new AsyncEvent<Func<Exception, bool, Task>>();
+        public event EventHandler Connected;
+
+        public event EventHandler<DisconnectedArguments> Disconnected;
+        public class DisconnectedArguments
+        {
+            public Exception Exception { get; set; }
+            public bool IsReconnecting { get; set; }
+        }
 
         private readonly SemaphoreSlim _stateLock;
         private readonly Logger _logger;
@@ -154,7 +158,7 @@ namespace Discord
                 await _logger.InfoAsync("Connected").ConfigureAwait(false);
                 State = ConnectionState.Connected;
                 await _logger.DebugAsync("Raising Event").ConfigureAwait(false);
-                await _connectedEvent.InvokeAsync().ConfigureAwait(false);
+                Connected.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
@@ -170,7 +174,7 @@ namespace Discord
 
             await _onDisconnecting(ex).ConfigureAwait(false);
 
-            await _disconnectedEvent.InvokeAsync(ex, isReconnecting).ConfigureAwait(false);
+            Disconnected.Invoke(this, new DisconnectedArguments { Exception = ex, IsReconnecting = isReconnecting });
             State = ConnectionState.Disconnected;
             await _logger.InfoAsync("Disconnected").ConfigureAwait(false);
         }

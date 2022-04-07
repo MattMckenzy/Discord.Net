@@ -33,8 +33,7 @@ namespace Discord.Commands
         /// <summary>
         ///     Occurs when a command-related information is received.
         /// </summary>
-        public event Func<LogMessage, Task> Log { add { _logEvent.Add(value); } remove { _logEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<LogMessage, Task>> _logEvent = new AsyncEvent<Func<LogMessage, Task>>();
+        public event EventHandler<LogMessage> Log;
 
         /// <summary>
         ///     Occurs when a command is executed.
@@ -43,8 +42,22 @@ namespace Discord.Commands
         ///     This event is fired when a command has been executed, successfully or not. When a command fails to
         ///     execute during parsing or precondition stage, the CommandInfo may not be returned.
         /// </remarks>
-        public event Func<Optional<CommandInfo>, ICommandContext, IResult, Task> CommandExecuted { add { _commandExecutedEvent.Add(value); } remove { _commandExecutedEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<Optional<CommandInfo>, ICommandContext, IResult, Task>> _commandExecutedEvent = new AsyncEvent<Func<Optional<CommandInfo>, ICommandContext, IResult, Task>>();
+        public event EventHandler<CommandExecutedArguments> CommandExecuted;
+        public class CommandExecutedArguments
+        {
+            public Optional<CommandInfo> CommandInfo { get; set; }
+            public ICommandContext CommandContext { get; set; }
+            public IResult Result { get; set; }
+        }
+        public void OnCommandExecuted(Optional<CommandInfo> CommandInfo, ICommandContext CommandContext, IResult Result)
+        {
+            CommandExecuted.Invoke(this, new CommandExecutedArguments
+            {
+                CommandInfo = CommandInfo,
+                CommandContext = CommandContext,
+                Result = Result
+            });
+        }
 
         private readonly SemaphoreSlim _moduleLock;
         private readonly ConcurrentDictionary<Type, ModuleInfo> _typedModuleDefs;
@@ -102,7 +115,7 @@ namespace Discord.Commands
                 throw new InvalidOperationException("The default run mode cannot be set to Default.");
 
             _logManager = new LogManager(config.LogLevel);
-            _logManager.Message += async msg => await _logEvent.InvokeAsync(msg).ConfigureAwait(false);
+            _logManager.Message += (sender, msg) => Log.Invoke(sender, msg);
             _cmdLogger = _logManager.CreateLogger("Command");
 
             _moduleLock = new SemaphoreSlim(1, 1);
@@ -557,7 +570,7 @@ namespace Discord.Commands
 
             if (validationResult is SearchResult result)
             {
-                await _commandExecutedEvent.InvokeAsync(Optional.Create<CommandInfo>(), context, result).ConfigureAwait(false);
+                OnCommandExecuted(Optional.Create<CommandInfo>(), context, result);
                 return result;
             }
 
@@ -578,20 +591,20 @@ namespace Discord.Commands
             {
                 if (!parseResult.IsSuccess)
                 {
-                    await _commandExecutedEvent.InvokeAsync(matchResult.Match.Value.Command, context, parseResult);
+                    OnCommandExecuted(matchResult.Match.Value.Command, context, parseResult);
                     return parseResult;
                 }
 
                 var executeResult = await matchResult.Match.Value.ExecuteAsync(context, parseResult, services);
 
                 if (!executeResult.IsSuccess && !(executeResult is RuntimeResult || executeResult is ExecuteResult)) // succesful results raise the event in CommandInfo#ExecuteInternalAsync (have to raise it there b/c deffered execution)
-                    await _commandExecutedEvent.InvokeAsync(matchResult.Match.Value.Command, context, executeResult);
+                    OnCommandExecuted(matchResult.Match.Value.Command, context, executeResult);
                 return executeResult;
             }
 
             if (matchResult.Pipeline is PreconditionResult preconditionResult)
             {
-                await _commandExecutedEvent.InvokeAsync(matchResult.Match.Value.Command, context, preconditionResult).ConfigureAwait(false);
+                OnCommandExecuted(matchResult.Match.Value.Command, context, preconditionResult);
                 return preconditionResult;
             }
 

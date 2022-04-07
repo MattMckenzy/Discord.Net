@@ -214,7 +214,7 @@ namespace Discord.Commands
                     var result = await parameter.CheckPreconditionsAsync(context, argument, services).ConfigureAwait(false);
                     if (!result.IsSuccess)
                     {
-                        await Module.Service._commandExecutedEvent.InvokeAsync(this, context, result).ConfigureAwait(false);
+                        Module.Service.OnCommandExecuted(this, context, result);
                         return ExecuteResult.FromError(result);
                     }
                 }
@@ -247,21 +247,21 @@ namespace Discord.Commands
                 if (task is Task<IResult> resultTask)
                 {
                     var result = await resultTask.ConfigureAwait(false);
-                    await Module.Service._commandExecutedEvent.InvokeAsync(this, context, result).ConfigureAwait(false);
+                    Module.Service.OnCommandExecuted(this, context, result);
                     if (result is RuntimeResult execResult)
                         return execResult;
                 }
                 else if (task is Task<ExecuteResult> execTask)
                 {
                     var result = await execTask.ConfigureAwait(false);
-                    await Module.Service._commandExecutedEvent.InvokeAsync(this, context, result).ConfigureAwait(false);
+                    Module.Service.OnCommandExecuted(this, context, result);
                     return result;
                 }
                 else
                 {
                     await task.ConfigureAwait(false);
                     var result = ExecuteResult.FromSuccess();
-                    await Module.Service._commandExecutedEvent.InvokeAsync(this, context, result).ConfigureAwait(false);
+                    Module.Service.OnCommandExecuted(this, context, result);
                 }
 
                 var executeResult = ExecuteResult.FromSuccess();
@@ -277,7 +277,7 @@ namespace Discord.Commands
                 await Module.Service._cmdLogger.ErrorAsync(wrappedEx).ConfigureAwait(false);
 
                 var result = ExecuteResult.FromError(ex);
-                await Module.Service._commandExecutedEvent.InvokeAsync(this, context, result).ConfigureAwait(false);
+                Module.Service.OnCommandExecuted(this, context, result);
 
                 if (Module.Service._throwOnError)
                 {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace Discord.Net.ED25519.Ed25519Ref10
 {
@@ -33,7 +33,7 @@ namespace Discord.Net.ED25519.Ed25519Ref10
 				hram = hasher.Finalize();
 
 				ScalarOperations.sc_reduce(hram);
-				var s = new byte[32];//todo: remove allocation
+				var s = new byte[32];
 				Array.Copy(sig, sigoffset + 32, s, 0, 32);
 				ScalarOperations.sc_muladd(s, hram, az, r);
 				Array.Copy(s, 0, sig, sigoffset + 32, 32);

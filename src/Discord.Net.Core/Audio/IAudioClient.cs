@@ -4,15 +4,33 @@ using System.Threading.Tasks;
 
 namespace Discord.Audio
 {
+    public class LatencyUpdatedArguments
+    {
+        public int OriginalLatency { get; set; }
+        public int UpdatedLatency { get; set; }
+    }
+
+    public class StreamCreatedArguments
+    {
+        public ulong UserId { get; set; }
+        public AudioInStream Stream { get; set; }
+    }
+
+    public class SpeakingUpdatedArguments
+    {
+        public ulong UserId { get; set; }
+        public bool IsSpeaking { get; set; }
+    }
+
     public interface IAudioClient : IDisposable
     {
-        event Func<Task> Connected;
-        event Func<Exception, Task> Disconnected;
-        event Func<int, int, Task> LatencyUpdated;
-        event Func<int, int, Task> UdpLatencyUpdated;
-        event Func<ulong, AudioInStream, Task> StreamCreated;
-        event Func<ulong, Task> StreamDestroyed;
-        event Func<ulong, bool, Task> SpeakingUpdated;
+        event EventHandler Connected;
+        event EventHandler<Exception> Disconnected;
+        event EventHandler<LatencyUpdatedArguments> LatencyUpdated;
+        event EventHandler<LatencyUpdatedArguments> UdpLatencyUpdated;
+        event EventHandler<StreamCreatedArguments> StreamCreated;
+        event EventHandler<ulong> StreamDestroyed;
+        event EventHandler<SpeakingUpdatedArguments> SpeakingUpdated;
 
         /// <summary> Gets the current connection state of this client. </summary>
         ConnectionState ConnectionState { get; }

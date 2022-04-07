@@ -21,44 +21,127 @@ namespace Discord.Interactions
         /// <summary>
         ///     Occurs when a Slash Command related information is recieved.
         /// </summary>
-        public event Func<LogMessage, Task> Log { add { _logEvent.Add(value); } remove { _logEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<LogMessage, Task>> _logEvent = new ();
+        public event EventHandler<LogMessage> Log;
 
         /// <summary>
         ///     Occurs when a Slash Command is executed.
         /// </summary>
-        public event Func<SlashCommandInfo, IInteractionContext, IResult, Task> SlashCommandExecuted { add { _slashCommandExecutedEvent.Add(value); } remove { _slashCommandExecutedEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<SlashCommandInfo, IInteractionContext, IResult, Task>> _slashCommandExecutedEvent = new ();
+        public event EventHandler<SlashCommandExecutedArguments> SlashCommandExecuted;
+        public class SlashCommandExecutedArguments
+        {
+            public SlashCommandInfo CommandInfo { get; set; }
+            public IInteractionContext InteractionContext { get; set; }
+            public IResult Result { get; set; }
+        }
+        public void OnSlashCommandExecuted(SlashCommandInfo commandInfo, IInteractionContext interactionContext, IResult result)
+        {
+            SlashCommandExecuted.Invoke(this, new SlashCommandExecutedArguments
+            {
+                CommandInfo = commandInfo,
+                InteractionContext = interactionContext,
+                Result = result
+            });
+        }
 
         /// <summary>
         ///     Occurs when a Context Command is executed.
         /// </summary>
-        public event Func<ContextCommandInfo, IInteractionContext, IResult, Task> ContextCommandExecuted { add { _contextCommandExecutedEvent.Add(value); } remove { _contextCommandExecutedEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<ContextCommandInfo, IInteractionContext, IResult, Task>> _contextCommandExecutedEvent = new ();
+        public event EventHandler<ContextCommandExecutedArguments> ContextCommandExecuted;
+        public class ContextCommandExecutedArguments
+        {
+            public ContextCommandInfo CommandInfo { get; set; }
+            public IInteractionContext InteractionContext { get; set; }
+            public IResult Result { get; set; }
+        }
+        public void OnContextCommandExecuted(ContextCommandInfo commandInfo, IInteractionContext interactionContext, IResult result)
+        {
+            ContextCommandExecuted.Invoke(this, new ContextCommandExecutedArguments
+            {
+                CommandInfo = commandInfo,
+                InteractionContext = interactionContext,
+                Result = result
+            });
+        }
 
         /// <summary>
         ///     Occurs when a Message Component command is executed.
         /// </summary>
-        public event Func<ComponentCommandInfo, IInteractionContext, IResult, Task> ComponentCommandExecuted { add { _componentCommandExecutedEvent.Add(value); } remove { _componentCommandExecutedEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<ComponentCommandInfo, IInteractionContext, IResult, Task>> _componentCommandExecutedEvent = new ();
+        public event EventHandler<ComponentCommandExecutedArguments> ComponentCommandExecuted;
+        public class ComponentCommandExecutedArguments
+        {
+            public ComponentCommandInfo CommandInfo { get; set; }
+            public IInteractionContext InteractionContext { get; set; }
+            public IResult Result { get; set; }
+        }
+        public void OnComponentCommandExecuted(ComponentCommandInfo commandInfo, IInteractionContext interactionContext, IResult result)
+        {
+            ComponentCommandExecuted.Invoke(this, new ComponentCommandExecutedArguments
+            {
+                CommandInfo = commandInfo,
+                InteractionContext = interactionContext,
+                Result = result
+            });
+        }
 
         /// <summary>
         ///     Occurs when a Autocomplete command is executed.
         /// </summary>
-        public event Func<AutocompleteCommandInfo, IInteractionContext, IResult, Task> AutocompleteCommandExecuted { add { _autocompleteCommandExecutedEvent.Add(value); } remove { _autocompleteCommandExecutedEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<AutocompleteCommandInfo, IInteractionContext, IResult, Task>> _autocompleteCommandExecutedEvent = new();
+        public event EventHandler<AutocompleteCommandExecutedArguments> AutocompleteCommandExecuted;
+        public class AutocompleteCommandExecutedArguments
+        {
+            public AutocompleteCommandInfo CommandInfo { get; set; }
+            public IInteractionContext InteractionContext { get; set; }
+            public IResult Result { get; set; }
+        }
+        public void OnAutocompleteCommandExecuted(AutocompleteCommandInfo commandInfo, IInteractionContext interactionContext, IResult result)
+        {
+            AutocompleteCommandExecuted.Invoke(this, new AutocompleteCommandExecutedArguments
+            {
+                CommandInfo = commandInfo,
+                InteractionContext = interactionContext,
+                Result = result
+            });
+        }
 
         /// <summary>
         ///     Occurs when a AutocompleteHandler is executed.
         /// </summary>
-        public event Func<IAutocompleteHandler, IInteractionContext, IResult, Task> AutocompleteHandlerExecuted { add { _autocompleteHandlerExecutedEvent.Add(value); } remove { _autocompleteHandlerExecutedEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<IAutocompleteHandler, IInteractionContext, IResult, Task>> _autocompleteHandlerExecutedEvent = new();
+        public event EventHandler<AutocompleteHandlerExecutedArguments> AutocompleteHandlerExecuted;
+        public class AutocompleteHandlerExecutedArguments
+        {
+            public IAutocompleteHandler AutocompleteHandler { get; set; }
+            public IInteractionContext InteractionContext { get; set; }
+            public IResult Result { get; set; }
+        }
+        public void OnAutocompleteHandlerExecuted(IAutocompleteHandler autocompleteHandler, IInteractionContext interactionContext, IResult result)
+        {
+            AutocompleteHandlerExecuted.Invoke(this, new AutocompleteHandlerExecutedArguments
+            {
+                AutocompleteHandler = autocompleteHandler,
+                InteractionContext = interactionContext,
+                Result = result
+            });
+        }
 
         /// <summary>
         ///     Occurs when a Modal command is executed.
         /// </summary>
-        public event Func<ModalCommandInfo, IInteractionContext, IResult, Task> ModalCommandExecuted { add { _modalCommandExecutedEvent.Add(value); } remove { _modalCommandExecutedEvent.Remove(value); } }
-        internal readonly AsyncEvent<Func<ModalCommandInfo, IInteractionContext, IResult, Task>> _modalCommandExecutedEvent = new();
+        public event EventHandler<ModalCommandExecutedArguments> ModalCommandExecuted;
+        public class ModalCommandExecutedArguments
+        {
+            public ModalCommandInfo CommandInfo { get; set; }
+            public IInteractionContext InteractionContext { get; set; }
+            public IResult Result { get; set; }
+        }
+        public void OnModalCommandExecuted(ModalCommandInfo commandInfo, IInteractionContext interactionContext, IResult result)
+        {
+            ModalCommandExecuted.Invoke(this, new ModalCommandExecutedArguments
+            {
+                CommandInfo = commandInfo,
+                InteractionContext = interactionContext,
+                Result = result
+            });
+        }
 
         private readonly ConcurrentDictionary<Type, ModuleInfo> _typedModuleDefs;
         private readonly CommandMap<SlashCommandInfo> _slashCommandMap;
@@ -158,7 +241,7 @@ namespace Discord.Interactions
             _moduleDefs = new HashSet<ModuleInfo>();
 
             _logManager = new LogManager(config.LogLevel);
-            _logManager.Message += async msg => await _logEvent.InvokeAsync(msg).ConfigureAwait(false);
+            _logManager.Message += (sender, msg) => Log.Invoke(sender, msg);
             _cmdLogger = _logManager.CreateLogger("App Commands");
 
             _slashCommandMap = new CommandMap<SlashCommandInfo>(this);
@@ -718,7 +801,7 @@ namespace Discord.Interactions
             {
                 await _cmdLogger.DebugAsync($"Unknown slash command, skipping execution ({string.Join(" ", keywords).ToUpper()})");
 
-                await _slashCommandExecutedEvent.InvokeAsync(null, context, result).ConfigureAwait(false);
+                SlashCommandExecuted.Invoke(this, new SlashCommandExecutedArguments { CommandInfo = null, InteractionContext = context, Result = result });
                 return result;
             }
             return await result.Command.ExecuteAsync(context, services).ConfigureAwait(false);
@@ -735,7 +818,7 @@ namespace Discord.Interactions
             {
                 await _cmdLogger.DebugAsync($"Unknown context command, skipping execution ({result.Text.ToUpper()})");
 
-                await _contextCommandExecutedEvent.InvokeAsync(null, context, result).ConfigureAwait(false);
+                ContextCommandExecuted.Invoke(this, new ContextCommandExecutedArguments { CommandInfo = null, InteractionContext = context, Result = result });
                 return result;
             }
             return await result.Command.ExecuteAsync(context, services).ConfigureAwait(false);
@@ -749,7 +832,7 @@ namespace Discord.Interactions
             {
                 await _cmdLogger.DebugAsync($"Unknown custom interaction id, skipping execution ({input.ToUpper()})");
 
-                await _componentCommandExecutedEvent.InvokeAsync(null, context, result).ConfigureAwait(false);
+                ComponentCommandExecuted.Invoke(this, new ComponentCommandExecutedArguments { CommandInfo = null, InteractionContext = context, Result = result });
                 return result;
             }
             return await result.Command.ExecuteAsync(context, services, result.RegexCaptureGroups).ConfigureAwait(false);
@@ -778,7 +861,7 @@ namespace Discord.Interactions
             {
                 await _cmdLogger.DebugAsync($"Unknown command name, skipping autocomplete process ({interaction.Data.CommandName.ToUpper()})");
 
-                await _autocompleteCommandExecutedEvent.InvokeAsync(null, context, commandResult).ConfigureAwait(false);
+                AutocompleteCommandExecuted.Invoke(this, new AutocompleteCommandExecutedArguments { CommandInfo = null, InteractionContext = context, Result = commandResult });
                 return commandResult;
             }
 
@@ -793,7 +876,7 @@ namespace Discord.Interactions
             {
                 await _cmdLogger.DebugAsync($"Unknown custom interaction id, skipping execution ({input.ToUpper()})");
 
-                await _componentCommandExecutedEvent.InvokeAsync(null, context, result).ConfigureAwait(false);
+                ModalCommandExecuted.Invoke(this, new ModalCommandExecutedArguments { CommandInfo = null, InteractionContext = context, Result = result });
                 return result;
             }
             return await result.Command.ExecuteAsync(context, services, result.RegexCaptureGroups).ConfigureAwait(false);

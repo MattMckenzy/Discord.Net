@@ -77,7 +77,6 @@ namespace Discord.WebSocket
         internal int? HandlerTimeout { get; private set; }
         internal bool AlwaysDownloadDefaultStickers { get; private set; }
         internal bool AlwaysResolveStickers { get; private set; }
-        internal bool LogGatewayIntentWarnings { get; private set; }
         internal bool SuppressUnknownDispatchWarnings { get; private set; }
         internal new DiscordSocketApiClient ApiClient => base.ApiClient;
         /// <inheritdoc />
@@ -150,7 +149,6 @@ namespace Discord.WebSocket
             AlwaysDownloadUsers = config.AlwaysDownloadUsers;
             AlwaysDownloadDefaultStickers = config.AlwaysDownloadDefaultStickers;
             AlwaysResolveStickers = config.AlwaysResolveStickers;
-            LogGatewayIntentWarnings = config.LogGatewayIntentWarnings;
             SuppressUnknownDispatchWarnings = config.SuppressUnknownDispatchWarnings;
             HandlerTimeout = config.HandlerTimeout;
             State = new ClientState(0, 0);
@@ -162,9 +160,9 @@ namespace Discord.WebSocket
             _stateLock = new SemaphoreSlim(1, 1);
             _gatewayLogger = LogManager.CreateLogger(ShardId == 0 && TotalShards == 1 ? "Gateway" : $"Shard #{ShardId}");
             _connection = new ConnectionManager(_stateLock, _gatewayLogger, config.ConnectionTimeout,
-                OnConnectingAsync, OnDisconnectingAsync, x => ApiClient.Disconnected += x);
-            _connection.Connected += () => TimedInvokeAsync(_connectedEvent, nameof(Connected));
-            _connection.Disconnected += (ex, recon) => TimedInvokeAsync(_disconnectedEvent, nameof(Disconnected), ex);
+                OnConnectingAsync, OnDisconnectingAsync, x => ApiClient.Disconnected += (_, exception) => x(exception));
+            _connection.Connected += (_, _) => OnConnected();
+            _connection.Disconnected += (_, args) => OnDisconnected(args.Exception);
 
             _nextAudioId = 1;
             _shardedClient = shardedClient;
@@ -177,22 +175,21 @@ namespace Discord.WebSocket
                 e.ErrorContext.Handled = true;
             };
 
-            ApiClient.SentGatewayMessage += async opCode => await _gatewayLogger.DebugAsync($"Sent {opCode}").ConfigureAwait(false);
-            ApiClient.ReceivedGatewayEvent += ProcessMessageAsync;
+            ApiClient.SentGatewayMessage += async (_, opCode) => await _gatewayLogger.DebugAsync($"Sent {opCode}").ConfigureAwait(false);
+            ApiClient.ReceivedGatewayEvent += async (_, args) => await ProcessMessageAsync(args.Operation, args.FrameSequence, args.FrameType, args.FramePayload);
 
-            LeftGuild += async g => await _gatewayLogger.InfoAsync($"Left {g.Name}").ConfigureAwait(false);
-            JoinedGuild += async g => await _gatewayLogger.InfoAsync($"Joined {g.Name}").ConfigureAwait(false);
-            GuildAvailable += async g => await _gatewayLogger.VerboseAsync($"Connected to {g.Name}").ConfigureAwait(false);
-            GuildUnavailable += async g => await _gatewayLogger.VerboseAsync($"Disconnected from {g.Name}").ConfigureAwait(false);
-            LatencyUpdated += async (old, val) => await _gatewayLogger.DebugAsync($"Latency = {val} ms").ConfigureAwait(false);
+            LeftGuild += async (_, g) => await _gatewayLogger.InfoAsync($"Left {g.Name}").ConfigureAwait(false);
+            JoinedGuild += async (_, g) => await _gatewayLogger.InfoAsync($"Joined {g.Name}").ConfigureAwait(false);
+            GuildAvailable += async (_, g) => await _gatewayLogger.VerboseAsync($"Connected to {g.Name}").ConfigureAwait(false);
+            GuildUnavailable += async (_, g) => await _gatewayLogger.VerboseAsync($"Disconnected from {g.Name}").ConfigureAwait(false);
+            LatencyUpdated += async (_, args) => await _gatewayLogger.DebugAsync($"Latency = {args.UpdatedLatency} ms").ConfigureAwait(false);
 
-            GuildAvailable += g =>
+            GuildAvailable += (_, g) =>
             {
                 if (_guildDownloadTask?.IsCompleted == true && ConnectionState == ConnectionState.Connected && AlwaysDownloadUsers && !g.HasAllMembers)
                 {
-                    var _ = g.DownloadUsersAsync();
+                    var __ = g.DownloadUsersAsync();
                 }
-                return Task.Delay(0);
             };
 
             _largeGuilds = new ConcurrentQueue<ulong>();
@@ -315,11 +312,8 @@ namespace Discord.WebSocket
 
             //Wait for READY
             await _connection.WaitAsync().ConfigureAwait(false);
-
-            // Log warnings on ready event
-            if (LogGatewayIntentWarnings)
-                await LogGatewayIntentsWarning().ConfigureAwait(false);
         }
+
         private async Task OnDisconnectingAsync(Exception ex)
         {
 
@@ -739,52 +733,6 @@ namespace Discord.WebSocket
                     game);
         }
 
-        private async Task LogGatewayIntentsWarning()
-        {
-            if(_gatewayIntents.HasFlag(GatewayIntents.GuildPresences) && !_presenceUpdated.HasSubscribers)
-            {
-                await _gatewayLogger.WarningAsync("You're using the GuildPresences intent without listening to the PresenceUpdate event, consider removing the intent from your config.").ConfigureAwait(false);
-            }
-
-            if(!_gatewayIntents.HasFlag(GatewayIntents.GuildPresences) && _presenceUpdated.HasSubscribers)
-            {
-                await _gatewayLogger.WarningAsync("You're using the PresenceUpdate event without specifying the GuildPresences intent. Discord wont send this event to your client without the intent set in your config.").ConfigureAwait(false);
-            }
-
-            bool hasGuildScheduledEventsSubscribers =
-                _guildScheduledEventCancelled.HasSubscribers ||
-                _guildScheduledEventUserRemove.HasSubscribers ||
-                _guildScheduledEventCompleted.HasSubscribers ||
-                _guildScheduledEventCreated.HasSubscribers ||
-                _guildScheduledEventStarted.HasSubscribers ||
-                _guildScheduledEventUpdated.HasSubscribers ||
-                _guildScheduledEventUserAdd.HasSubscribers;
-
-            if(_gatewayIntents.HasFlag(GatewayIntents.GuildScheduledEvents) && !hasGuildScheduledEventsSubscribers)
-            {
-                await _gatewayLogger.WarningAsync("You're using the GuildScheduledEvents gateway intent without listening to any events related to that intent, consider removing the intent from your config.").ConfigureAwait(false);
-            }
-
-            if(!_gatewayIntents.HasFlag(GatewayIntents.GuildScheduledEvents) && hasGuildScheduledEventsSubscribers)
-            {
-                await _gatewayLogger.WarningAsync("You're using events related to the GuildScheduledEvents gateway intent without specifying the intent. Discord wont send this event to your client without the intent set in your config.").ConfigureAwait(false);
-            }
-
-            bool hasInviteEventSubscribers =
-                _inviteCreatedEvent.HasSubscribers ||
-                _inviteDeletedEvent.HasSubscribers;
-
-            if (_gatewayIntents.HasFlag(GatewayIntents.GuildInvites) && !hasInviteEventSubscribers)
-            {
-                await _gatewayLogger.WarningAsync("You're using the GuildInvites gateway intent without listening to any events related to that intent, consider removing the intent from your config.").ConfigureAwait(false);
-            }
-
-            if (!_gatewayIntents.HasFlag(GatewayIntents.GuildInvites) && hasInviteEventSubscribers)
-            {
-                await _gatewayLogger.WarningAsync("You're using events related to the GuildInvites gateway intent without specifying the intent. Discord wont send this event to your client without the intent set in your config.").ConfigureAwait(false);
-            }
-        }
-
         #region ProcessMessageAsync
         private async Task ProcessMessageAsync(GatewayOpCode opCode, int? seq, string type, object payload)
         {
@@ -821,7 +769,7 @@ namespace Discord.WebSocket
                                 int before = Latency;
                                 Latency = latency;
 
-                                await TimedInvokeAsync(_latencyUpdatedEvent, nameof(LatencyUpdated), before, latency).ConfigureAwait(false);
+                                OnLatencyUpdated(new LatencyUpdatedArguments { OriginalLatency = before, UpdatedLatency = latency });
                             }
                         }
                         break;
@@ -915,7 +863,7 @@ namespace Discord.WebSocket
                                             if (BaseConfig.AlwaysDownloadUsers)
                                                 _ = DownloadUsersAsync(Guilds.Where(x => x.IsAvailable && !x.HasAllMembers));
 
-                                            await TimedInvokeAsync(_readyEvent, nameof(Ready)).ConfigureAwait(false);
+                                            OnReady();
                                             await _gatewayLogger.InfoAsync("Ready").ConfigureAwait(false);
                                         });
                                     _ = _connection.CompleteAsync();
@@ -965,7 +913,7 @@ namespace Discord.WebSocket
                                             if (guild.DownloadedMemberCount >= guild.MemberCount && !guild.DownloaderPromise.IsCompleted)
                                             {
                                                 guild.CompleteDownloadUsers();
-                                                await TimedInvokeAsync(_guildMembersDownloadedEvent, nameof(GuildMembersDownloaded), guild).ConfigureAwait(false);
+                                                OnGuildMembersDownloaded(guild);
                                             }
                                         }
                                         else
@@ -981,7 +929,7 @@ namespace Discord.WebSocket
                                         var guild = AddGuild(data, State);
                                         if (guild != null)
                                         {
-                                            await TimedInvokeAsync(_joinedGuildEvent, nameof(JoinedGuild), guild).ConfigureAwait(false);
+                                            OnJoinedGuild(guild);
                                             await GuildAvailableAsync(guild).ConfigureAwait(false);
                                         }
                                         else
@@ -1002,7 +950,7 @@ namespace Discord.WebSocket
                                     {
                                         var before = guild.Clone();
                                         guild.Update(State, data);
-                                        await TimedInvokeAsync(_guildUpdatedEvent, nameof(GuildUpdated), before, guild).ConfigureAwait(false);
+                                        OnGuildUpdated(new GuildUpdatedArguments { OriginalGuild = before, UpdatedGuild = guild });
                                     }
                                     else
                                     {
@@ -1021,7 +969,8 @@ namespace Discord.WebSocket
                                     {
                                         var before = guild.Clone();
                                         guild.Update(State, data);
-                                        await TimedInvokeAsync(_guildUpdatedEvent, nameof(GuildUpdated), before, guild).ConfigureAwait(false);
+
+                                        OnGuildUpdated(new GuildUpdatedArguments { OriginalGuild = before, UpdatedGuild = guild });
                                     }
                                     else
                                     {
@@ -1081,7 +1030,8 @@ namespace Discord.WebSocket
                                         if (guild != null)
                                         {
                                             await GuildUnavailableAsync(guild).ConfigureAwait(false);
-                                            await TimedInvokeAsync(_leftGuildEvent, nameof(LeftGuild), guild).ConfigureAwait(false);
+
+                                            OnLeftGuild(guild);
                                             (guild as IDisposable).Dispose();
                                         }
                                         else
@@ -1128,12 +1078,12 @@ namespace Discord.WebSocket
                                     foreach (var model in newStickers)
                                     {
                                         var entity = guild.AddSticker(model);
-                                        await TimedInvokeAsync(_guildStickerCreated, nameof(GuildStickerCreated), entity);
+                                        OnGuildStickerCreated(entity);
                                     }
                                     foreach (var sticker in deletedStickers)
                                     {
                                         var entity = guild.RemoveSticker(sticker.Id);
-                                        await TimedInvokeAsync(_guildStickerDeleted, nameof(GuildStickerDeleted), entity);
+                                        OnGuildStickerDeleted(entity);
                                     }
                                     foreach (var entityModelPair in updatedStickers)
                                     {
@@ -1141,7 +1091,7 @@ namespace Discord.WebSocket
 
                                         entityModelPair.Entity.Update(entityModelPair.Model);
 
-                                        await TimedInvokeAsync(_guildStickerUpdated, nameof(GuildStickerUpdated), before, entityModelPair.Entity);
+                                        OnGuildStickerUpdated(new GuildStickerUpdatedArguments { OriginalCustomSticker = before, UpdatedCustomSticker = entityModelPair.Entity });
                                     }
                                 }
                                 break;
@@ -1182,7 +1132,7 @@ namespace Discord.WebSocket
                                     }
 
                                     if (channel != null)
-                                        await TimedInvokeAsync(_channelCreatedEvent, nameof(ChannelCreated), channel).ConfigureAwait(false);
+                                        OnChannelCreated(channel);
                                 }
                                 break;
                             case "CHANNEL_UPDATE":
@@ -1203,7 +1153,7 @@ namespace Discord.WebSocket
                                             return;
                                         }
 
-                                        await TimedInvokeAsync(_channelUpdatedEvent, nameof(ChannelUpdated), before, channel).ConfigureAwait(false);
+                                        OnChannelUpdated(new SocketChannelUpdated { OldSocketChannel = before, NewSocketChannel = channel });
                                     }
                                     else
                                     {
@@ -1241,7 +1191,7 @@ namespace Discord.WebSocket
                                         channel = RemovePrivateChannel(data.Id) as SocketChannel;
 
                                     if (channel != null)
-                                        await TimedInvokeAsync(_channelDestroyedEvent, nameof(ChannelDestroyed), channel).ConfigureAwait(false);
+                                        OnChannelDestroyed(channel);
                                     else
                                     {
                                         await UnknownChannelAsync(type, data.Id, data.GuildId.GetValueOrDefault(0)).ConfigureAwait(false);
@@ -1269,7 +1219,7 @@ namespace Discord.WebSocket
                                             return;
                                         }
 
-                                        await TimedInvokeAsync(_userJoinedEvent, nameof(UserJoined), user).ConfigureAwait(false);
+                                        OnUserJoined(user);
                                     }
                                     else
                                     {
@@ -1300,19 +1250,19 @@ namespace Discord.WebSocket
                                             if (user.GlobalUser.Update(State, data.User))
                                             {
                                                 //Global data was updated, trigger UserUpdated
-                                                await TimedInvokeAsync(_userUpdatedEvent, nameof(UserUpdated), before.GlobalUser, user).ConfigureAwait(false);
+                                                OnUserUpdated(new UserUpdatedArguments { OriginalUser = before.GlobalUser, UpdatedUser = user });
                                             }
 
                                             user.Update(State, data);
 
                                             var cacheableBefore = new Cacheable<SocketGuildUser, ulong>(before, user.Id, true, () => null);
-                                            await TimedInvokeAsync(_guildMemberUpdatedEvent, nameof(GuildMemberUpdated), cacheableBefore, user).ConfigureAwait(false);
+                                            OnGuildMemberUpdated(new GuildMemberUpdatedArguments { OriginalGuildUser = cacheableBefore, UpdatedGuildUser = user });
                                         }
                                         else
                                         {
                                             user = guild.AddOrUpdateUser(data);
                                             var cacheableBefore = new Cacheable<SocketGuildUser, ulong>(user, user.Id, true, () => null);
-                                            await TimedInvokeAsync(_guildMemberUpdatedEvent, nameof(GuildMemberUpdated), cacheableBefore, user).ConfigureAwait(false);
+                                            OnGuildMemberUpdated(new GuildMemberUpdatedArguments { OriginalGuildUser = cacheableBefore, UpdatedGuildUser = user });
                                         }
                                     }
                                     else
@@ -1346,7 +1296,7 @@ namespace Discord.WebSocket
                                         else
                                             user = State.GetOrAddUser(data.User.Id, (x) => SocketGlobalUser.Create(this, State, data.User));
 
-                                        await TimedInvokeAsync(_userLeftEvent, nameof(UserLeft), guild, user).ConfigureAwait(false);
+                                        OnUserLeft(new UserLeftArguments { Guild = guild, User = user });
                                     }
                                     else
                                     {
@@ -1369,7 +1319,7 @@ namespace Discord.WebSocket
                                         if (guild.DownloadedMemberCount >= guild.MemberCount && !guild.DownloaderPromise.IsCompleted)
                                         {
                                             guild.CompleteDownloadUsers();
-                                            await TimedInvokeAsync(_guildMembersDownloadedEvent, nameof(GuildMembersDownloaded), guild).ConfigureAwait(false);
+                                            OnGuildMembersDownloaded(guild);
                                         }
                                     }
                                     else
@@ -1398,7 +1348,7 @@ namespace Discord.WebSocket
 
                                     var cacheableUser = new Cacheable<SocketGuildUser, ulong>(user, data.UserId, user != null, () => Task.FromResult((SocketGuildUser)null));
 
-                                    await TimedInvokeAsync(_guildJoinRequestDeletedEvent, nameof(GuildJoinRequestDeleted), cacheableUser, guild).ConfigureAwait(false);
+                                    OnGuildJoinRequestDeleted(new GuildJoinRequestDeletedArguments { Guild = guild, GuildUser = cacheableUser });
                                 }
                                 break;
                             #endregion
@@ -1413,7 +1363,7 @@ namespace Discord.WebSocket
                                     if (State.GetChannel(data.ChannelId) is SocketGroupChannel channel)
                                     {
                                         var user = channel.GetOrAddUser(data.User);
-                                        await TimedInvokeAsync(_recipientAddedEvent, nameof(RecipientAdded), user).ConfigureAwait(false);
+                                        OnRecipientAdded(user);
                                     }
                                     else
                                     {
@@ -1431,7 +1381,7 @@ namespace Discord.WebSocket
                                     {
                                         var user = channel.RemoveUser(data.User.Id);
                                         if (user != null)
-                                            await TimedInvokeAsync(_recipientRemovedEvent, nameof(RecipientRemoved), user).ConfigureAwait(false);
+                                            OnRecipientRemoved(user);
                                         else
                                         {
                                             await UnknownChannelUserAsync(type, data.User.Id, data.ChannelId).ConfigureAwait(false);
@@ -1464,7 +1414,7 @@ namespace Discord.WebSocket
                                             await UnsyncedGuildAsync(type, guild.Id).ConfigureAwait(false);
                                             return;
                                         }
-                                        await TimedInvokeAsync(_roleCreatedEvent, nameof(RoleCreated), role).ConfigureAwait(false);
+                                        OnRoleCreated(role);
                                     }
                                     else
                                     {
@@ -1493,7 +1443,7 @@ namespace Discord.WebSocket
                                                 return;
                                             }
 
-                                            await TimedInvokeAsync(_roleUpdatedEvent, nameof(RoleUpdated), before, role).ConfigureAwait(false);
+                                            OnRoleUpdated(new RoleUpdatedArguments { OriginalRole = before, UpdatedRole = role });
                                         }
                                         else
                                         {
@@ -1525,7 +1475,7 @@ namespace Discord.WebSocket
                                                 return;
                                             }
 
-                                            await TimedInvokeAsync(_roleDeletedEvent, nameof(RoleDeleted), role).ConfigureAwait(false);
+                                            OnRoleDeleted(role);
                                         }
                                         else
                                         {
@@ -1560,7 +1510,8 @@ namespace Discord.WebSocket
                                         SocketUser user = guild.GetUser(data.User.Id);
                                         if (user == null)
                                             user = SocketUnknownUser.Create(this, State, data.User);
-                                        await TimedInvokeAsync(_userBannedEvent, nameof(UserBanned), user, guild).ConfigureAwait(false);
+
+                                        OnUserBanned(new UserBannedArguments { Guild = guild, User = user });
                                     }
                                     else
                                     {
@@ -1586,7 +1537,7 @@ namespace Discord.WebSocket
                                         SocketUser user = State.GetUser(data.User.Id);
                                         if (user == null)
                                             user = SocketUnknownUser.Create(this, State, data.User);
-                                        await TimedInvokeAsync(_userUnbannedEvent, nameof(UserUnbanned), user, guild).ConfigureAwait(false);
+                                        OnUserBanned(new UserBannedArguments { Guild = guild, User = user });
                                     }
                                     else
                                     {
@@ -1659,7 +1610,7 @@ namespace Discord.WebSocket
 
                                     var msg = SocketMessage.Create(this, State, author, channel, data);
                                     SocketChannelHelper.AddMessage(channel, this, msg);
-                                    await TimedInvokeAsync(_messageReceivedEvent, nameof(MessageReceived), msg).ConfigureAwait(false);
+                                    OnMessageReceived(msg);
                                 }
                                 break;
                             case "MESSAGE_UPDATE":
@@ -1745,7 +1696,7 @@ namespace Discord.WebSocket
                                     }
                                     var cacheableBefore = new Cacheable<IMessage, ulong>(before, data.Id, isCached, async () => await channel.GetMessageAsync(data.Id).ConfigureAwait(false));
 
-                                    await TimedInvokeAsync(_messageUpdatedEvent, nameof(MessageUpdated), cacheableBefore, after, channel).ConfigureAwait(false);
+                                    OnMessageUpdated(new MessageUpdatedArguments { MessageChannel = channel, OriginalMessage = cacheableBefore, UpdatedMessage = after });
                                 }
                                 break;
                             case "MESSAGE_DELETE":
@@ -1768,7 +1719,7 @@ namespace Discord.WebSocket
                                     var cacheableMsg = new Cacheable<IMessage, ulong>(msg, data.Id, msg != null, () => Task.FromResult((IMessage)null));
                                     var cacheableChannel = new Cacheable<IMessageChannel, ulong>(channel, data.ChannelId, channel != null, async () => await GetChannelAsync(data.ChannelId).ConfigureAwait(false) as IMessageChannel);
 
-                                    await TimedInvokeAsync(_messageDeletedEvent, nameof(MessageDeleted), cacheableMsg, cacheableChannel).ConfigureAwait(false);
+                                    OnMessageDeleted(new MessageDeletedArguments { Message = cacheableMsg, MessageChannel = cacheableChannel });
                                 }
                                 break;
                             case "MESSAGE_REACTION_ADD":
@@ -1812,7 +1763,7 @@ namespace Discord.WebSocket
 
                                     cachedMsg?.AddReaction(reaction);
 
-                                    await TimedInvokeAsync(_reactionAddedEvent, nameof(ReactionAdded), cacheableMsg, cacheableChannel, reaction).ConfigureAwait(false);
+                                    OnReactionAdded(new ReactionAddedArguments { MessageChannel = cacheableChannel, Message = cacheableMsg, AddedReaction = reaction });
                                 }
                                 break;
                             case "MESSAGE_REACTION_REMOVE":
@@ -1848,7 +1799,7 @@ namespace Discord.WebSocket
 
                                     cachedMsg?.RemoveReaction(reaction);
 
-                                    await TimedInvokeAsync(_reactionRemovedEvent, nameof(ReactionRemoved), cacheableMsg, cacheableChannel, reaction).ConfigureAwait(false);
+                                    OnReactionRemoved(new ReactionRemovedArguments { MessageChannel = cacheableChannel, Message = cacheableMsg, RemovedReaction = reaction });
                                 }
                                 break;
                             case "MESSAGE_REACTION_REMOVE_ALL":
@@ -1869,7 +1820,7 @@ namespace Discord.WebSocket
 
                                     cachedMsg?.ClearReactions();
 
-                                    await TimedInvokeAsync(_reactionsClearedEvent, nameof(ReactionsCleared), cacheableMsg, cacheableChannel).ConfigureAwait(false);
+                                    OnReactionsCleared(new ReactionsClearedArguments { MessageChannel = cacheableChannel, Message = cacheableMsg });
                                 }
                                 break;
                             case "MESSAGE_REACTION_REMOVE_EMOJI":
@@ -1896,7 +1847,7 @@ namespace Discord.WebSocket
 
                                     cachedMsg?.RemoveReactionsForEmote(emote);
 
-                                    await TimedInvokeAsync(_reactionsRemovedForEmoteEvent, nameof(ReactionsRemovedForEmote), cacheableMsg, cacheableChannel, emote).ConfigureAwait(false);
+                                    OnReactionsRemovedForEmote(new ReactionsRemovedForEmoteArguments { MessageChannel = cacheableChannel, Message = cacheableMsg, RemovedEmote = emote });
                                 }
                                 break;
                             case "MESSAGE_DELETE_BULK":
@@ -1925,7 +1876,7 @@ namespace Discord.WebSocket
                                         cacheableList.Add(cacheableMsg);
                                     }
 
-                                    await TimedInvokeAsync(_messagesBulkDeletedEvent, nameof(MessagesBulkDeleted), cacheableList, cacheableChannel).ConfigureAwait(false);
+                                    OnMessagesBulkDeleted(new MessagesBulkDeletedArguments { MessageChannel = cacheableChannel, Messages = cacheableList });
                                 }
                                 break;
                             #endregion
@@ -1968,7 +1919,7 @@ namespace Discord.WebSocket
                                             if (user.GlobalUser.Update(State, data.User))
                                             {
                                                 //Global data was updated, trigger UserUpdated
-                                                await TimedInvokeAsync(_userUpdatedEvent, nameof(UserUpdated), globalBefore, user).ConfigureAwait(false);
+                                                OnUserUpdated(new UserUpdatedArguments { OriginalUser = globalBefore, UpdatedUser = user });
                                             }
                                         }
                                     }
@@ -1985,7 +1936,7 @@ namespace Discord.WebSocket
                                     var before = user.Presence?.Clone();
                                     user.Update(State, data.User);
                                     user.Update(data);
-                                    await TimedInvokeAsync(_presenceUpdated, nameof(PresenceUpdated), user, before, user.Presence).ConfigureAwait(false);
+                                    OnPresenceUpdated(new PresenceUpdatedArguments { User = user, OriginalPresence = before, UpdatedPresence = user.Presence });
                                 }
                                 break;
                             case "TYPING_START":
@@ -2012,7 +1963,7 @@ namespace Discord.WebSocket
                                     }
                                     var cacheableUser = new Cacheable<IUser, ulong>(user, data.UserId, user != null, async () => await GetUserAsync(data.UserId).ConfigureAwait(false));
 
-                                    await TimedInvokeAsync(_userIsTypingEvent, nameof(UserIsTyping), cacheableUser, cacheableChannel).ConfigureAwait(false);
+                                    OnUserIsTyping(new UserIsTypingArguments { User = cacheableUser, Channel = cacheableChannel });
                                 }
                                 break;
                             #endregion
@@ -2038,7 +1989,7 @@ namespace Discord.WebSocket
                                             return;
                                         }
 
-                                        await TimedInvokeAsync(_integrationCreated, nameof(IntegrationCreated), RestIntegration.Create(this, guild, data)).ConfigureAwait(false);
+                                        OnIntegrationCreated(RestIntegration.Create(this, guild, data));
                                     }
                                     else
                                     {
@@ -2067,7 +2018,7 @@ namespace Discord.WebSocket
                                             return;
                                         }
 
-                                        await TimedInvokeAsync(_integrationUpdated, nameof(IntegrationUpdated), RestIntegration.Create(this, guild, data)).ConfigureAwait(false);
+                                        OnIntegrationUpdated(RestIntegration.Create(this, guild, data));
                                     }
                                     else
                                     {
@@ -2092,7 +2043,7 @@ namespace Discord.WebSocket
                                             return;
                                         }
 
-                                        await TimedInvokeAsync(_integrationDeleted, nameof(IntegrationDeleted), guild, data.Id, data.ApplicationID).ConfigureAwait(false);
+                                        OnIntegrationDeleted(new IntegrationDeletedArguments { Guild = guild, ApplicationId = data.ApplicationID, IntegrationId = data.Id });
                                     }
                                     else
                                     {
@@ -2113,7 +2064,7 @@ namespace Discord.WebSocket
                                     {
                                         var before = CurrentUser.Clone();
                                         CurrentUser.Update(State, data);
-                                        await TimedInvokeAsync(_selfUpdatedEvent, nameof(CurrentUserUpdated), before, CurrentUser).ConfigureAwait(false);
+                                        OnCurrentUserUpdated(new CurrentUserUpdatedArguments { OriginalSelfUser = before, UpdatedSelfUser = CurrentUser });
                                     }
                                     else
                                     {
@@ -2204,22 +2155,22 @@ namespace Discord.WebSocket
                                         {
                                             if (!before.RequestToSpeakTimestamp.HasValue && after.RequestToSpeakTimestamp.HasValue)
                                             {
-                                                await TimedInvokeAsync(_requestToSpeak, nameof(RequestToSpeak), stage, guildUser);
+                                                OnRequestToSpeak(new RequestToSpeakArguments { StageChannel = stage, GuildUser = guildUser });
                                                 return;
                                             }
                                             if(before.IsSuppressed && !after.IsSuppressed)
                                             {
-                                                await TimedInvokeAsync(_speakerAdded, nameof(SpeakerAdded), stage, guildUser);
+                                                OnSpeakerAdded(new SpeakerAddedArguments { StageChannel = stage, GuildUser = guildUser });
                                                 return;
                                             }
                                             if(!before.IsSuppressed && after.IsSuppressed)
                                             {
-                                                await TimedInvokeAsync(_speakerRemoved, nameof(SpeakerRemoved), stage, guildUser);
+                                                OnSpeakerRemoved(new SpeakerRemovedArguments { StageChannel = stage, GuildUser = guildUser });
                                             }
                                         }
                                     }
 
-                                    await TimedInvokeAsync(_userVoiceStateUpdatedEvent, nameof(UserVoiceStateUpdated), user, before, after).ConfigureAwait(false);
+                                    OnUserVoiceStateUpdated(new UserVoiceStateUpdatedArguments { User = user, OriginalVoiceState = before, UpdatedVoiceState = after });
                                 }
                                 break;
                             case "VOICE_SERVER_UPDATE":
@@ -2233,7 +2184,8 @@ namespace Discord.WebSocket
                                         () => Task.FromResult(State.GetGuild(data.GuildId) as IGuild));
 
                                     var voiceServer = new SocketVoiceServer(cachedGuild, data.Endpoint, data.Token);
-                                    await TimedInvokeAsync(_voiceServerUpdatedEvent, nameof(UserVoiceStateUpdated), voiceServer).ConfigureAwait(false);
+
+                                    OnVoiceServerUpdated(voiceServer);
 
                                     if (isCached)
                                     {
@@ -2280,7 +2232,7 @@ namespace Discord.WebSocket
 
                                         var invite = SocketInvite.Create(this, guild, channel, inviter, target, data);
 
-                                        await TimedInvokeAsync(_inviteCreatedEvent, nameof(InviteCreated), invite).ConfigureAwait(false);
+                                        OnInviteCreated(invite);
                                     }
                                     else
                                     {
@@ -2303,7 +2255,7 @@ namespace Discord.WebSocket
                                             return;
                                         }
 
-                                        await TimedInvokeAsync(_inviteDeletedEvent, nameof(InviteDeleted), channel, data.Code).ConfigureAwait(false);
+                                        OnInviteDeleted(new InviteDeletedArguments { GuildChannel = channel, InviteCode = data.Code });
                                     }
                                     else
                                     {
@@ -2358,30 +2310,30 @@ namespace Discord.WebSocket
 
                                     var interaction = SocketInteraction.Create(this, data, channel as ISocketMessageChannel, user);
 
-                                    await TimedInvokeAsync(_interactionCreatedEvent, nameof(InteractionCreated), interaction).ConfigureAwait(false);
+                                    OnInteractionCreated(interaction);
 
                                     switch (interaction)
                                     {
                                         case SocketSlashCommand slashCommand:
-                                            await TimedInvokeAsync(_slashCommandExecuted, nameof(SlashCommandExecuted), slashCommand).ConfigureAwait(false);
+                                            OnSlashCommandExecuted(slashCommand);
                                             break;
                                         case SocketMessageComponent messageComponent:
                                             if (messageComponent.Data.Type == ComponentType.SelectMenu)
-                                                await TimedInvokeAsync(_selectMenuExecuted, nameof(SelectMenuExecuted), messageComponent).ConfigureAwait(false);
+                                                OnSelectMenuExecuted(messageComponent);
                                             if (messageComponent.Data.Type == ComponentType.Button)
-                                                await TimedInvokeAsync(_buttonExecuted, nameof(ButtonExecuted), messageComponent).ConfigureAwait(false);
+                                                OnButtonExecuted(messageComponent);
                                             break;
                                         case SocketUserCommand userCommand:
-                                            await TimedInvokeAsync(_userCommandExecuted, nameof(UserCommandExecuted), userCommand).ConfigureAwait(false);
+                                            OnUserCommandExecuted(userCommand);
                                             break;
                                         case SocketMessageCommand messageCommand:
-                                            await TimedInvokeAsync(_messageCommandExecuted, nameof(MessageCommandExecuted), messageCommand).ConfigureAwait(false);
+                                            OnMessageCommandExecuted(messageCommand);
                                             break;
                                         case SocketAutocompleteInteraction autocomplete:
-                                            await TimedInvokeAsync(_autocompleteExecuted, nameof(AutocompleteExecuted), autocomplete).ConfigureAwait(false);
+                                            OnAutocompleteExecuted(autocomplete);
                                             break;
                                         case SocketModal modal:
-                                            await TimedInvokeAsync(_modalSubmitted, nameof(ModalSubmitted), modal).ConfigureAwait(false);
+                                            OnModalSubmitted(modal);
                                             break;
                                     }
                                 }
@@ -2406,7 +2358,7 @@ namespace Discord.WebSocket
 
                                     State.AddCommand(applicationCommand);
 
-                                    await TimedInvokeAsync(_applicationCommandCreated, nameof(ApplicationCommandCreated), applicationCommand).ConfigureAwait(false);
+                                    OnApplicationCommandCreated(applicationCommand);
                                 }
                                 break;
                             case "APPLICATION_COMMAND_UPDATE":
@@ -2429,7 +2381,7 @@ namespace Discord.WebSocket
 
                                     State.AddCommand(applicationCommand);
 
-                                    await TimedInvokeAsync(_applicationCommandUpdated, nameof(ApplicationCommandUpdated), applicationCommand).ConfigureAwait(false);
+                                    OnApplicationCommandUpdated(applicationCommand);
                                 }
                                 break;
                             case "APPLICATION_COMMAND_DELETE":
@@ -2452,7 +2404,7 @@ namespace Discord.WebSocket
 
                                     State.RemoveCommand(applicationCommand.Id);
 
-                                    await TimedInvokeAsync(_applicationCommandDeleted, nameof(ApplicationCommandDeleted), applicationCommand).ConfigureAwait(false);
+                                    OnApplicationCommandDeleted(applicationCommand);
                                 }
                                 break;
                             #endregion
@@ -2488,7 +2440,7 @@ namespace Discord.WebSocket
                                             threadChannel.AddOrUpdateThreadMember(data.ThreadMember.Value, guild.CurrentUser);
                                     }
 
-                                    await TimedInvokeAsync(_threadCreated, nameof(ThreadCreated), threadChannel).ConfigureAwait(false);
+                                    OnThreadCreated(threadChannel);
                                 }
 
                                 break;
@@ -2530,7 +2482,7 @@ namespace Discord.WebSocket
                                         return;
                                     }
 
-                                    await TimedInvokeAsync(_threadUpdated, nameof(ThreadUpdated), before, threadChannel).ConfigureAwait(false);
+                                    OnThreadUpdated(new ThreadUpdatedArguments { OriginalThreadChannel = before, UpdatedThreadChannel = threadChannel });
                                 }
                                 break;
                             case "THREAD_DELETE":
@@ -2551,7 +2503,7 @@ namespace Discord.WebSocket
 
                                     var cacheable = new Cacheable<SocketThreadChannel, ulong>(thread, data.Id, thread != null, null);
 
-                                    await TimedInvokeAsync(_threadDeleted, nameof(ThreadDeleted), cacheable).ConfigureAwait(false);
+                                    OnThreadDeleted(cacheable);
                                 }
                                 break;
                             case "THREAD_LIST_SYNC":
@@ -2664,7 +2616,7 @@ namespace Discord.WebSocket
                                     {
                                         foreach(var threadUser in leftUsers)
                                         {
-                                            await TimedInvokeAsync(_threadMemberLeft, nameof(ThreadMemberLeft), threadUser).ConfigureAwait(false);
+                                            OnThreadMemberLeft(threadUser);
                                         }
                                     }
 
@@ -2672,7 +2624,7 @@ namespace Discord.WebSocket
                                     {
                                         foreach(var threadUser in joinUsers)
                                         {
-                                            await TimedInvokeAsync(_threadMemberJoined, nameof(ThreadMemberJoined), threadUser).ConfigureAwait(false);
+                                            OnThreadMemberJoined(threadUser);
                                         }
                                     }
                                 }
@@ -2710,13 +2662,13 @@ namespace Discord.WebSocket
                                     switch (type)
                                     {
                                         case "STAGE_INSTANCE_CREATE":
-                                            await TimedInvokeAsync(_stageStarted, nameof(StageStarted), stageChannel).ConfigureAwait(false);
+                                            OnStageStarted(stageChannel);
                                             return;
                                         case "STAGE_INSTANCE_DELETE":
-                                            await TimedInvokeAsync(_stageEnded, nameof(StageEnded), stageChannel).ConfigureAwait(false);
+                                            OnStageEnded(stageChannel);
                                             return;
                                         case "STAGE_INSTANCE_UPDATE":
-                                            await TimedInvokeAsync(_stageUpdated, nameof(StageUpdated), before, stageChannel).ConfigureAwait(false);
+                                            OnStageUpdated(new StageUpdatedArguments { OriginalStage = before, UpdatedStage = stageChannel });
                                             return;
                                     }
                                 }
@@ -2740,7 +2692,7 @@ namespace Discord.WebSocket
 
                                     var newEvent = guild.AddOrUpdateEvent(data);
 
-                                    await TimedInvokeAsync(_guildScheduledEventCreated, nameof(GuildScheduledEventCreated), newEvent).ConfigureAwait(false);
+                                    OnGuildScheduledEventCreated(newEvent);
                                 }
                                 break;
                             case "GUILD_SCHEDULED_EVENT_UPDATE":
@@ -2765,13 +2717,14 @@ namespace Discord.WebSocket
 
                                     if((before != null ? before.Status != GuildScheduledEventStatus.Completed : true) && data.Status == GuildScheduledEventStatus.Completed)
                                     {
-                                        await TimedInvokeAsync(_guildScheduledEventCompleted, nameof(GuildScheduledEventCompleted), after).ConfigureAwait(false);
+                                        OnGuildScheduledEventCompleted(after);
                                     }
                                     else if((before != null ? before.Status != GuildScheduledEventStatus.Active : false) && data.Status == GuildScheduledEventStatus.Active)
                                     {
-                                        await TimedInvokeAsync(_guildScheduledEventStarted, nameof(GuildScheduledEventStarted), after).ConfigureAwait(false);
+                                        OnGuildScheduledEventStarted(after);
                                     }
-                                    else await TimedInvokeAsync(_guildScheduledEventUpdated, nameof(GuildScheduledEventUpdated), beforeCacheable, after).ConfigureAwait(false);
+                                    else
+                                        OnGuildScheduledEventUpdated(new GuildScheduledEventUpdatedArguments { OriginalGuildEvent = beforeCacheable, UpdatedGuildEvent = after });
                                 }
                                 break;
                             case "GUILD_SCHEDULED_EVENT_DELETE":
@@ -2790,7 +2743,7 @@ namespace Discord.WebSocket
 
                                     var guildEvent = guild.RemoveEvent(data.Id) ?? SocketGuildEvent.Create(this, guild, data);
 
-                                    await TimedInvokeAsync(_guildScheduledEventCancelled, nameof(GuildScheduledEventCancelled), guildEvent).ConfigureAwait(false);
+                                    OnGuildScheduledEventCancelled(guildEvent);
                                 }
                                 break;
                             case "GUILD_SCHEDULED_EVENT_USER_ADD" or "GUILD_SCHEDULED_EVENT_USER_REMOVE":
@@ -2822,10 +2775,10 @@ namespace Discord.WebSocket
                                     switch (type)
                                     {
                                         case "GUILD_SCHEDULED_EVENT_USER_ADD":
-                                            await TimedInvokeAsync(_guildScheduledEventUserAdd, nameof(GuildScheduledEventUserAdd), cacheableUser, guildEvent).ConfigureAwait(false);
+                                            OnGuildScheduledEventUserAdd(new GuildScheduledEventUserAddArguments { GuildEvent = guildEvent, AddedGuildEventUser = cacheableUser });
                                             break;
                                         case "GUILD_SCHEDULED_EVENT_USER_REMOVE":
-                                            await TimedInvokeAsync(_guildScheduledEventUserRemove, nameof(GuildScheduledEventUserRemove), cacheableUser, guildEvent).ConfigureAwait(false);
+                                            OnGuildScheduledEventUserRemove(new GuildScheduledEventUserRemoveArguments { GuildEvent = guildEvent, RemovedGuildEventUser = cacheableUser });
                                             break;
                                     }
                                 }
@@ -3009,101 +2962,27 @@ namespace Discord.WebSocket
         internal bool HasGatewayIntent(GatewayIntents intents)
             => _gatewayIntents.HasFlag(intents);
 
-        private async Task GuildAvailableAsync(SocketGuild guild)
+        private Task GuildAvailableAsync(SocketGuild guild)
         {
             if (!guild.IsConnected)
             {
                 guild.IsConnected = true;
-                await TimedInvokeAsync(_guildAvailableEvent, nameof(GuildAvailable), guild).ConfigureAwait(false);
+                OnGuildAvailable(guild);
             }
+
+            return Task.CompletedTask;
         }
-        private async Task GuildUnavailableAsync(SocketGuild guild)
+        private Task GuildUnavailableAsync(SocketGuild guild)
         {
             if (guild.IsConnected)
             {
                 guild.IsConnected = false;
-                await TimedInvokeAsync(_guildUnavailableEvent, nameof(GuildUnavailable), guild).ConfigureAwait(false);
+                OnGuildUnavailable(guild);
             }
-        }
 
-        private async Task TimedInvokeAsync(AsyncEvent<Func<Task>> eventHandler, string name)
-        {
-            if (eventHandler.HasSubscribers)
-            {
-                if (HandlerTimeout.HasValue)
-                    await TimeoutWrap(name, eventHandler.InvokeAsync).ConfigureAwait(false);
-                else
-                    await eventHandler.InvokeAsync().ConfigureAwait(false);
-            }
+            return Task.CompletedTask;
         }
-        private async Task TimedInvokeAsync<T>(AsyncEvent<Func<T, Task>> eventHandler, string name, T arg)
-        {
-            if (eventHandler.HasSubscribers)
-            {
-                if (HandlerTimeout.HasValue)
-                    await TimeoutWrap(name, () => eventHandler.InvokeAsync(arg)).ConfigureAwait(false);
-                else
-                    await eventHandler.InvokeAsync(arg).ConfigureAwait(false);
-            }
-        }
-        private async Task TimedInvokeAsync<T1, T2>(AsyncEvent<Func<T1, T2, Task>> eventHandler, string name, T1 arg1, T2 arg2)
-        {
-            if (eventHandler.HasSubscribers)
-            {
-                if (HandlerTimeout.HasValue)
-                    await TimeoutWrap(name, () => eventHandler.InvokeAsync(arg1, arg2)).ConfigureAwait(false);
-                else
-                    await eventHandler.InvokeAsync(arg1, arg2).ConfigureAwait(false);
-            }
-        }
-        private async Task TimedInvokeAsync<T1, T2, T3>(AsyncEvent<Func<T1, T2, T3, Task>> eventHandler, string name, T1 arg1, T2 arg2, T3 arg3)
-        {
-            if (eventHandler.HasSubscribers)
-            {
-                if (HandlerTimeout.HasValue)
-                    await TimeoutWrap(name, () => eventHandler.InvokeAsync(arg1, arg2, arg3)).ConfigureAwait(false);
-                else
-                    await eventHandler.InvokeAsync(arg1, arg2, arg3).ConfigureAwait(false);
-            }
-        }
-        private async Task TimedInvokeAsync<T1, T2, T3, T4>(AsyncEvent<Func<T1, T2, T3, T4, Task>> eventHandler, string name, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
-        {
-            if (eventHandler.HasSubscribers)
-            {
-                if (HandlerTimeout.HasValue)
-                    await TimeoutWrap(name, () => eventHandler.InvokeAsync(arg1, arg2, arg3, arg4)).ConfigureAwait(false);
-                else
-                    await eventHandler.InvokeAsync(arg1, arg2, arg3, arg4).ConfigureAwait(false);
-            }
-        }
-        private async Task TimedInvokeAsync<T1, T2, T3, T4, T5>(AsyncEvent<Func<T1, T2, T3, T4, T5, Task>> eventHandler, string name, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
-        {
-            if (eventHandler.HasSubscribers)
-            {
-                if (HandlerTimeout.HasValue)
-                    await TimeoutWrap(name, () => eventHandler.InvokeAsync(arg1, arg2, arg3, arg4, arg5)).ConfigureAwait(false);
-                else
-                    await eventHandler.InvokeAsync(arg1, arg2, arg3, arg4, arg5).ConfigureAwait(false);
-            }
-        }
-        private async Task TimeoutWrap(string name, Func<Task> action)
-        {
-            try
-            {
-                var timeoutTask = Task.Delay(HandlerTimeout.Value);
-                var handlersTask = action();
-                if (await Task.WhenAny(timeoutTask, handlersTask).ConfigureAwait(false) == timeoutTask)
-                {
-                    await _gatewayLogger.WarningAsync($"A {name} handler is blocking the gateway task.").ConfigureAwait(false);
-                }
-                await handlersTask.ConfigureAwait(false); //Ensure the handler completes
-            }
-            catch (Exception ex)
-            {
-                await _gatewayLogger.WarningAsync($"A {name} handler has thrown an unhandled exception.", ex).ConfigureAwait(false);
-            }
-        }
-
+           
         private async Task UnknownGlobalUserAsync(string evnt, ulong userId)
         {
             string details = $"{evnt} User={userId}";

@@ -56,7 +56,6 @@ namespace Discord.Commands
 
             foreach (var typeInfo in topLevelGroups)
             {
-                // TODO: This shouldn't be the case; may be safe to remove?
                 if (result.ContainsKey(typeInfo.AsType()))
                     continue;
 

@@ -184,11 +184,6 @@ namespace Discord.WebSocket
         public GatewayIntents GatewayIntents { get; set; } = GatewayIntents.AllUnprivileged;
 
         /// <summary>
-        ///     Gets or sets whether or not to log warnings related to guild intents and events.
-        /// </summary>
-        public bool LogGatewayIntentWarnings { get; set; } = true;
-
-        /// <summary>
         ///     Gets or sets whether or not Unknown Dispatch event messages should be logged.
         /// </summary>
         public bool SuppressUnknownDispatchWarnings { get; set; } = true;

@@ -36,9 +36,9 @@ namespace Discord.Interactions
 
             cancellationToken.Register(( ) => tcs.SetCanceled());
 
-            client.InteractionCreated += HandleInteraction;
+            client.InteractionCreated += async (sender, args) => await HandleInteraction(args);
             var result = await tcs.Task.ConfigureAwait(false);
-            client.InteractionCreated -= HandleInteraction;
+            client.InteractionCreated -= async (sender, args) => await HandleInteraction(args);
 
             return result;
 

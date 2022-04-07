@@ -15,7 +15,7 @@ namespace Discord.Net.ED25519
         /// </summary>
         public Sha512()
         {
-            _buffer = new byte[BlockSize];//todo: remove allocation
+            _buffer = new byte[BlockSize];
             Init();
         }
 

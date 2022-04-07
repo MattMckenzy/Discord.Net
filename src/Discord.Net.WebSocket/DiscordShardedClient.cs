@@ -403,8 +403,7 @@ namespace Discord.WebSocket
 
         private void RegisterEvents(DiscordSocketClient client, bool isPrimary)
         {
-            client.Log += (msg) => _logEvent.InvokeAsync(msg);
-            client.LoggedOut += () =>
+            client.LoggedOut += (sender, args) =>
             {
                 var state = LoginState;
                 if (state == LoginState.LoggedIn || state == LoginState.LoggingIn)
@@ -412,89 +411,7 @@ namespace Discord.WebSocket
                     //Should only happen if token is changed
                     var _ = LogoutAsync(); //Signal the logout, fire and forget
                 }
-                return Task.Delay(0);
             };
-
-            client.Connected += () => _shardConnectedEvent.InvokeAsync(client);
-            client.Disconnected += (exception) => _shardDisconnectedEvent.InvokeAsync(exception, client);
-            client.Ready += () => _shardReadyEvent.InvokeAsync(client);
-            client.LatencyUpdated += (oldLatency, newLatency) => _shardLatencyUpdatedEvent.InvokeAsync(oldLatency, newLatency, client);
-
-            client.ChannelCreated += (channel) => _channelCreatedEvent.InvokeAsync(channel);
-            client.ChannelDestroyed += (channel) => _channelDestroyedEvent.InvokeAsync(channel);
-            client.ChannelUpdated += (oldChannel, newChannel) => _channelUpdatedEvent.InvokeAsync(oldChannel, newChannel);
-
-            client.MessageReceived += (msg) => _messageReceivedEvent.InvokeAsync(msg);
-            client.MessageDeleted += (cache, channel) => _messageDeletedEvent.InvokeAsync(cache, channel);
-            client.MessagesBulkDeleted += (cache, channel) => _messagesBulkDeletedEvent.InvokeAsync(cache, channel);
-            client.MessageUpdated += (oldMsg, newMsg, channel) => _messageUpdatedEvent.InvokeAsync(oldMsg, newMsg, channel);
-            client.ReactionAdded += (cache, channel, reaction) => _reactionAddedEvent.InvokeAsync(cache, channel, reaction);
-            client.ReactionRemoved += (cache, channel, reaction) => _reactionRemovedEvent.InvokeAsync(cache, channel, reaction);
-            client.ReactionsCleared += (cache, channel) => _reactionsClearedEvent.InvokeAsync(cache, channel);
-            client.ReactionsRemovedForEmote += (cache, channel, emote) => _reactionsRemovedForEmoteEvent.InvokeAsync(cache, channel, emote);
-
-            client.RoleCreated += (role) => _roleCreatedEvent.InvokeAsync(role);
-            client.RoleDeleted += (role) => _roleDeletedEvent.InvokeAsync(role);
-            client.RoleUpdated += (oldRole, newRole) => _roleUpdatedEvent.InvokeAsync(oldRole, newRole);
-
-            client.JoinedGuild += (guild) => _joinedGuildEvent.InvokeAsync(guild);
-            client.LeftGuild += (guild) => _leftGuildEvent.InvokeAsync(guild);
-            client.GuildAvailable += (guild) => _guildAvailableEvent.InvokeAsync(guild);
-            client.GuildUnavailable += (guild) => _guildUnavailableEvent.InvokeAsync(guild);
-            client.GuildMembersDownloaded += (guild) => _guildMembersDownloadedEvent.InvokeAsync(guild);
-            client.GuildUpdated += (oldGuild, newGuild) => _guildUpdatedEvent.InvokeAsync(oldGuild, newGuild);
-
-            client.UserJoined += (user) => _userJoinedEvent.InvokeAsync(user);
-            client.UserLeft += (guild, user) => _userLeftEvent.InvokeAsync(guild, user);
-            client.UserBanned += (user, guild) => _userBannedEvent.InvokeAsync(user, guild);
-            client.UserUnbanned += (user, guild) => _userUnbannedEvent.InvokeAsync(user, guild);
-            client.UserUpdated += (oldUser, newUser) => _userUpdatedEvent.InvokeAsync(oldUser, newUser);
-            client.GuildMemberUpdated += (oldUser, newUser) => _guildMemberUpdatedEvent.InvokeAsync(oldUser, newUser);
-            client.UserVoiceStateUpdated += (user, oldVoiceState, newVoiceState) => _userVoiceStateUpdatedEvent.InvokeAsync(user, oldVoiceState, newVoiceState);
-            client.VoiceServerUpdated += (server) => _voiceServerUpdatedEvent.InvokeAsync(server);
-            client.CurrentUserUpdated += (oldUser, newUser) => _selfUpdatedEvent.InvokeAsync(oldUser, newUser);
-            client.UserIsTyping += (oldUser, newUser) => _userIsTypingEvent.InvokeAsync(oldUser, newUser);
-            client.RecipientAdded += (user) => _recipientAddedEvent.InvokeAsync(user);
-            client.RecipientRemoved += (user) => _recipientRemovedEvent.InvokeAsync(user);
-
-            client.InviteCreated += (invite) => _inviteCreatedEvent.InvokeAsync(invite);
-            client.InviteDeleted += (channel, invite) => _inviteDeletedEvent.InvokeAsync(channel, invite);
-
-            client.InteractionCreated += (interaction) => _interactionCreatedEvent.InvokeAsync(interaction);
-            client.ButtonExecuted += (arg) => _buttonExecuted.InvokeAsync(arg);
-            client.SelectMenuExecuted += (arg) => _selectMenuExecuted.InvokeAsync(arg);
-            client.SlashCommandExecuted += (arg) => _slashCommandExecuted.InvokeAsync(arg);
-            client.UserCommandExecuted += (arg) => _userCommandExecuted.InvokeAsync(arg);
-            client.MessageCommandExecuted += (arg) => _messageCommandExecuted.InvokeAsync(arg);
-            client.AutocompleteExecuted += (arg) => _autocompleteExecuted.InvokeAsync(arg);
-            client.ModalSubmitted += (arg) => _modalSubmitted.InvokeAsync(arg);
-
-            client.ThreadUpdated += (thread1, thread2) => _threadUpdated.InvokeAsync(thread1, thread2);
-            client.ThreadCreated += (thread) => _threadCreated.InvokeAsync(thread);
-            client.ThreadDeleted += (thread) => _threadDeleted.InvokeAsync(thread);
-
-            client.ThreadMemberJoined += (user) => _threadMemberJoined.InvokeAsync(user);
-            client.ThreadMemberLeft += (user) => _threadMemberLeft.InvokeAsync(user);
-            client.StageEnded += (stage) => _stageEnded.InvokeAsync(stage);
-            client.StageStarted += (stage) => _stageStarted.InvokeAsync(stage);
-            client.StageUpdated += (stage1, stage2) => _stageUpdated.InvokeAsync(stage1, stage2);
-
-            client.RequestToSpeak += (stage, user) => _requestToSpeak.InvokeAsync(stage, user);
-            client.SpeakerAdded += (stage, user) => _speakerAdded.InvokeAsync(stage, user);
-            client.SpeakerRemoved += (stage, user) => _speakerRemoved.InvokeAsync(stage, user);
-
-            client.GuildStickerCreated += (sticker) => _guildStickerCreated.InvokeAsync(sticker);
-            client.GuildStickerDeleted += (sticker) => _guildStickerDeleted.InvokeAsync(sticker);
-            client.GuildStickerUpdated += (before, after) => _guildStickerUpdated.InvokeAsync(before, after);
-            client.GuildJoinRequestDeleted += (userId, guildId) => _guildJoinRequestDeletedEvent.InvokeAsync(userId, guildId);
-
-            client.GuildScheduledEventCancelled += (arg) => _guildScheduledEventCancelled.InvokeAsync(arg);
-            client.GuildScheduledEventCompleted += (arg) => _guildScheduledEventCompleted.InvokeAsync(arg);
-            client.GuildScheduledEventCreated += (arg) => _guildScheduledEventCreated.InvokeAsync(arg);
-            client.GuildScheduledEventUpdated += (arg1, arg2) => _guildScheduledEventUpdated.InvokeAsync(arg1, arg2);
-            client.GuildScheduledEventStarted += (arg) => _guildScheduledEventStarted.InvokeAsync(arg);
-            client.GuildScheduledEventUserAdd += (arg1, arg2) => _guildScheduledEventUserAdd.InvokeAsync(arg1, arg2);
-            client.GuildScheduledEventUserRemove += (arg1, arg2) => _guildScheduledEventUserRemove.InvokeAsync(arg1, arg2);
         }
         #endregion
 

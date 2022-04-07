@@ -46,6 +46,9 @@ namespace Discord.Interactions
 
         /// <inheritdoc/>
         protected override Task InvokeModuleEvent (IInteractionContext context, IResult result)
-            => CommandService._contextCommandExecutedEvent.InvokeAsync(this, context, result);
+        {
+            CommandService.OnContextCommandExecuted(this, context, result);
+            return Task.CompletedTask;
+        }
     }
 }

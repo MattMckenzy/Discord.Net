@@ -6,34 +6,30 @@ namespace Discord.WebSocket
     public partial class DiscordShardedClient
     {
         #region General
+
         /// <summary> Fired when a shard is connected to the Discord gateway. </summary>
-        public event Func<DiscordSocketClient, Task> ShardConnected 
-        {
-            add { _shardConnectedEvent.Add(value); }
-            remove { _shardConnectedEvent.Remove(value); }
-        }
-        private readonly AsyncEvent<Func<DiscordSocketClient, Task>> _shardConnectedEvent = new AsyncEvent<Func<DiscordSocketClient, Task>>();
+        public event EventHandler<DiscordSocketClient> ShardConnected;
+
         /// <summary> Fired when a shard is disconnected from the Discord gateway. </summary>
-        public event Func<Exception, DiscordSocketClient, Task> ShardDisconnected 
+        public event EventHandler<ShardDisconnectedArguments> ShardDisconnected;
+        public class ShardDisconnectedArguments
         {
-            add { _shardDisconnectedEvent.Add(value); }
-            remove { _shardDisconnectedEvent.Remove(value); }
+            public Exception Exception { get; set; }
+            public DiscordSocketClient Client { get; set; }
         }
-        private readonly AsyncEvent<Func<Exception, DiscordSocketClient, Task>> _shardDisconnectedEvent = new AsyncEvent<Func<Exception, DiscordSocketClient, Task>>();
+
         /// <summary> Fired when a guild data for a shard has finished downloading. </summary>
-        public event Func<DiscordSocketClient, Task> ShardReady 
-        {
-            add { _shardReadyEvent.Add(value); }
-            remove { _shardReadyEvent.Remove(value); }
-        }
-        private readonly AsyncEvent<Func<DiscordSocketClient, Task>> _shardReadyEvent = new AsyncEvent<Func<DiscordSocketClient, Task>>();
+        public event EventHandler<DiscordSocketClient> ShardReady;
+
         /// <summary> Fired when a shard receives a heartbeat from the Discord gateway. </summary>
-        public event Func<int, int, DiscordSocketClient, Task> ShardLatencyUpdated 
+        public event EventHandler<ShardLatencyUpdatedArguments> ShardLatencyUpdated;
+        public class ShardLatencyUpdatedArguments
         {
-            add { _shardLatencyUpdatedEvent.Add(value); }
-            remove { _shardLatencyUpdatedEvent.Remove(value); }
+            public int OriginalLatency { get; set; }
+            public int UpdatedLatency { get; set; }
+            public DiscordSocketClient Client { get; set; }
         }
-        private readonly AsyncEvent<Func<int, int, DiscordSocketClient, Task>> _shardLatencyUpdatedEvent = new AsyncEvent<Func<int, int, DiscordSocketClient, Task>>();
+
         #endregion
     }
 }

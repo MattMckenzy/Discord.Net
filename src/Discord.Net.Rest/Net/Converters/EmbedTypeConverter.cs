@@ -23,7 +23,6 @@ namespace Discord.Net.Converters
                 "article" => EmbedType.Article,
                 "tweet" => EmbedType.Tweet,
                 "html" => EmbedType.Html,
-                // TODO 2.2 EmbedType.News
                 _ => EmbedType.Unknown,
             };
         }

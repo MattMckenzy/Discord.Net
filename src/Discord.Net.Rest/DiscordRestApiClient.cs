@@ -26,8 +26,13 @@ namespace Discord.API
         #region DiscordRestApiClient
         private static readonly ConcurrentDictionary<string, Func<BucketIds, BucketId>> _bucketIdGenerators = new ConcurrentDictionary<string, Func<BucketIds, BucketId>>();
 
-        public event Func<string, string, double, Task> SentRequest { add { _sentRequestEvent.Add(value); } remove { _sentRequestEvent.Remove(value); } }
-        private readonly AsyncEvent<Func<string, string, double, Task>> _sentRequestEvent = new AsyncEvent<Func<string, string, double, Task>>();
+        public event EventHandler<SentRequestArguments> SentRequest;            
+        public class SentRequestArguments
+        {
+            public string Method { get; set; }
+            public string Endpoint { get; set; }
+            public double MillisecondsTaken { get; set; }
+        }
 
         protected readonly JsonSerializer _serializer;
         protected readonly SemaphoreSlim _stateLock;
@@ -292,7 +297,7 @@ namespace Discord.API
             stopwatch.Stop();
 
             double milliseconds = ToMilliseconds(stopwatch);
-            await _sentRequestEvent.InvokeAsync(method, endpoint, milliseconds).ConfigureAwait(false);
+            SentRequest.Invoke(this, new SentRequestArguments { Method = method, Endpoint = endpoint, MillisecondsTaken = milliseconds });
 
             return responseStream;
         }

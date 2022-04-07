@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace Discord.Net.ED25519.Ed25519Ref10
 {
@@ -20,7 +20,7 @@ namespace Discord.Net.ED25519.Ed25519Ref10
 			byte[] n, int noffset,
 			ref FieldElement p)
 		{
-			byte[] e = new byte[32];//ToDo: remove allocation
+			byte[] e = new byte[32];
 			FieldElement x1, x2, x3;
 			FieldElement z2, z3;
 			FieldElement tmp0, tmp1;

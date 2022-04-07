@@ -17,13 +17,16 @@ namespace Discord.API
 {
     internal class DiscordSocketApiClient : DiscordRestApiClient
     {
-        public event Func<GatewayOpCode, Task> SentGatewayMessage { add { _sentGatewayMessageEvent.Add(value); } remove { _sentGatewayMessageEvent.Remove(value); } }
-        private readonly AsyncEvent<Func<GatewayOpCode, Task>> _sentGatewayMessageEvent = new AsyncEvent<Func<GatewayOpCode, Task>>();
-        public event Func<GatewayOpCode, int?, string, object, Task> ReceivedGatewayEvent { add { _receivedGatewayEvent.Add(value); } remove { _receivedGatewayEvent.Remove(value); } }
-        private readonly AsyncEvent<Func<GatewayOpCode, int?, string, object, Task>> _receivedGatewayEvent = new AsyncEvent<Func<GatewayOpCode, int?, string, object, Task>>();
-
-        public event Func<Exception, Task> Disconnected { add { _disconnectedEvent.Add(value); } remove { _disconnectedEvent.Remove(value); } }
-        private readonly AsyncEvent<Func<Exception, Task>> _disconnectedEvent = new AsyncEvent<Func<Exception, Task>>();
+        public event EventHandler<GatewayOpCode> SentGatewayMessage;
+        public event EventHandler<ReceivedGatewayEventArguments> ReceivedGatewayEvent;
+        public class ReceivedGatewayEventArguments
+        {
+            public GatewayOpCode Operation { get; set; }
+            public int? FrameSequence { get; set; }
+            public string FrameType { get; set; }
+            public object  FramePayload { get; set; }
+        }
+        public event EventHandler<Exception> Disconnected;
 
         private readonly bool _isExplicitUrl;
         private CancellationTokenSource _connectCancelToken;
@@ -80,8 +83,13 @@ namespace Discord.API
 #if DEBUG_PACKETS
                             Console.WriteLine($"<- {(GatewayOpCode)msg.Operation} [{msg.Type ?? "none"}] : {(msg.Payload as Newtonsoft.Json.Linq.JToken)}");
 #endif
-
-                            await _receivedGatewayEvent.InvokeAsync((GatewayOpCode)msg.Operation, msg.Sequence, msg.Type, msg.Payload).ConfigureAwait(false);
+                            ReceivedGatewayEvent.Invoke(this, new ReceivedGatewayEventArguments
+                            {
+                                Operation = (GatewayOpCode)msg.Operation,
+                                FrameSequence = msg.Sequence,
+                                FrameType = msg.Type,
+                                FramePayload = msg.Payload
+                            });
                         }
                     }
                 }
@@ -97,8 +105,13 @@ namespace Discord.API
 #if DEBUG_PACKETS
                         Console.WriteLine($"<- {(GatewayOpCode)msg.Operation} [{msg.Type ?? "none"}] : {(msg.Payload as Newtonsoft.Json.Linq.JToken)}");
 #endif
-
-                        await _receivedGatewayEvent.InvokeAsync((GatewayOpCode)msg.Operation, msg.Sequence, msg.Type, msg.Payload).ConfigureAwait(false);
+                        ReceivedGatewayEvent.Invoke(this, new ReceivedGatewayEventArguments
+                        {
+                            Operation = (GatewayOpCode)msg.Operation,
+                            FrameSequence = msg.Sequence,
+                            FrameType = msg.Type,
+                            FramePayload = msg.Payload
+                        });
                     }
                 }
             };
@@ -109,7 +122,7 @@ namespace Discord.API
 #endif
 
                 await DisconnectAsync().ConfigureAwait(false);
-                await _disconnectedEvent.InvokeAsync(ex).ConfigureAwait(false);
+                Disconnected.Invoke(this, ex);
             };
         }
 
@@ -250,7 +263,6 @@ namespace Discord.API
         {
             CheckState();
 
-            //TODO: Add ETF
             byte[] bytes = null;
             payload = new SocketFrame { Operation = (int)opCode, Payload = payload };
             if (payload != null)
@@ -260,7 +272,8 @@ namespace Discord.API
             if (options.BucketId == null)
                 options.BucketId = GatewayBucket.Get(GatewayBucketType.Unbucketed).Id;
             await RequestQueue.SendAsync(new WebSocketRequest(WebSocketClient, bytes, true, opCode == GatewayOpCode.Heartbeat, options)).ConfigureAwait(false);
-            await _sentGatewayMessageEvent.InvokeAsync(opCode).ConfigureAwait(false);
+
+            SentGatewayMessage.Invoke(this, opCode);
 
 #if DEBUG_PACKETS
             Console.WriteLine($"-> {opCode}:\n{SerializeJson(payload)}");
