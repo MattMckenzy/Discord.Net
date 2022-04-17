@@ -6,7 +6,7 @@ namespace Discord
     /// <summary>
     ///     Provides a message object used for logging purposes.
     /// </summary>
-    public struct LogMessage
+    public class LogMessage
     {
         /// <summary>
         ///     Gets the severity of the log entry.
@@ -52,7 +52,11 @@ namespace Discord
             Message = message;
             Exception = exception;
         }
-        
+
+        public LogMessage()
+        {
+        }
+
         public override string ToString() => ToString();
         public string ToString(StringBuilder builder = null, bool fullException = true, bool prependTimestamp = true, DateTimeKind timestampKind = DateTimeKind.Local, int? padSource = 11)
         {

@@ -45,7 +45,7 @@ namespace Discord.Commands
         public event EventHandler<CommandExecutedArguments> CommandExecuted;
         public class CommandExecutedArguments
         {
-            public Optional<CommandInfo> CommandInfo { get; set; }
+            public Optional<CommandInfo> CommandInfo { get; set; } 
             public ICommandContext CommandContext { get; set; }
             public IResult Result { get; set; }
         }

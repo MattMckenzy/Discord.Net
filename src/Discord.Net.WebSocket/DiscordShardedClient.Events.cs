@@ -8,7 +8,11 @@ namespace Discord.WebSocket
         #region General
 
         /// <summary> Fired when a shard is connected to the Discord gateway. </summary>
-        public event EventHandler<DiscordSocketClient> ShardConnected;
+        public event EventHandler<ShardConnectedArguments> ShardConnected;
+        public class ShardConnectedArguments
+        {
+            public DiscordSocketClient DiscordSocketClient { get; set; }
+        }
 
         /// <summary> Fired when a shard is disconnected from the Discord gateway. </summary>
         public event EventHandler<ShardDisconnectedArguments> ShardDisconnected;
@@ -19,7 +23,11 @@ namespace Discord.WebSocket
         }
 
         /// <summary> Fired when a guild data for a shard has finished downloading. </summary>
-        public event EventHandler<DiscordSocketClient> ShardReady;
+        public event EventHandler<ShardReadyArguments> ShardReady;
+        public class ShardReadyArguments
+        {
+            public DiscordSocketClient DiscordSocketClient { get; set; }
+        }
 
         /// <summary> Fired when a shard receives a heartbeat from the Discord gateway. </summary>
         public event EventHandler<ShardLatencyUpdatedArguments> ShardLatencyUpdated;

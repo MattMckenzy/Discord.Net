@@ -103,8 +103,12 @@ namespace Discord.WebSocket
         ///     <code language="cs" region="MessageReceived"
         ///           source="..\Discord.Net.Examples\WebSocket\BaseSocketClient.Events.Examples.cs"/>
         /// </example>
-        public event EventHandler<SocketMessage> MessageReceived;
-        protected virtual void OnMessageReceived(SocketMessage eventArgs)
+        public event EventHandler<SocketMessageReceivedArguments> MessageReceived;
+        public class SocketMessageReceivedArguments
+        {
+            public SocketMessage SocketMessage { get; set; }
+        }
+        protected virtual void OnMessageReceived(SocketMessageReceivedArguments eventArgs)
         {
             MessageReceived?.Invoke(this, eventArgs);
         }
@@ -316,17 +320,25 @@ namespace Discord.WebSocket
         #endregion
 
         #region Roles
-
+            
         /// <summary> Fired when a role is created. </summary>
-        public event EventHandler<SocketRole> RoleCreated;
-        protected virtual void OnRoleCreated(SocketRole eventArgs)
+        public event EventHandler<RoleCreatedArguments> RoleCreated;
+        public class RoleCreatedArguments
+        {
+            public SocketRole SocketRole { get; set; }
+        }
+        protected virtual void OnRoleCreated(RoleCreatedArguments eventArgs)
         {
             RoleCreated?.Invoke(this, eventArgs);
         }
 
         /// <summary> Fired when a role is deleted. </summary>
-        public event EventHandler<SocketRole> RoleDeleted;
-        protected virtual void OnRoleDeleted(SocketRole eventArgs)
+        public event EventHandler<RoleDeletedArguments> RoleDeleted;
+        public class RoleDeletedArguments
+        {
+            public SocketRole SocketRole { get; set; }
+        }
+        protected virtual void OnRoleDeleted(RoleDeletedArguments eventArgs)
         {
             RoleDeleted?.Invoke(this, eventArgs);
         }
@@ -348,36 +360,56 @@ namespace Discord.WebSocket
         #region Guilds
 
         /// <summary> Fired when the connected account joins a guild. </summary>
-        public event EventHandler<SocketGuild> JoinedGuild;
-        protected virtual void OnJoinedGuild(SocketGuild eventArgs)
+        public event EventHandler<JoinedGuildArguments> JoinedGuild;
+        public class JoinedGuildArguments
+        {
+            public SocketGuild SocketGuild { get; set; }
+        }
+        protected virtual void OnJoinedGuild(JoinedGuildArguments eventArgs)
         {
             JoinedGuild?.Invoke(this, eventArgs);
         }
 
         /// <summary> Fired when the connected account leaves a guild. </summary>
-        public event EventHandler<SocketGuild> LeftGuild;
-        protected virtual void OnLeftGuild(SocketGuild eventArgs)
+        public event EventHandler<LeftGuildArguments> LeftGuild;
+        public class LeftGuildArguments
+        {
+            public SocketGuild SocketGuild { get; set; }
+        }
+        protected virtual void OnLeftGuild(LeftGuildArguments eventArgs)
         {
             LeftGuild?.Invoke(this, eventArgs);
         }
 
         /// <summary> Fired when a guild becomes available. </summary>
-        public event EventHandler<SocketGuild> GuildAvailable;
-        protected virtual void OnGuildAvailable(SocketGuild eventArgs)
+        public event EventHandler<GuildAvailableArguments> GuildAvailable;
+        public class GuildAvailableArguments
+        {
+            public SocketGuild SocketGuild { get; set; }
+        }
+        protected virtual void OnGuildAvailable(GuildAvailableArguments eventArgs)
         {
             GuildAvailable?.Invoke(this, eventArgs);
         }
 
         /// <summary> Fired when a guild becomes unavailable. </summary>
-        public event EventHandler<SocketGuild> GuildUnavailable;
-        protected virtual void OnGuildUnavailable(SocketGuild eventArgs)
+        public event EventHandler<GuildUnavailableArguments> GuildUnavailable;
+        public class GuildUnavailableArguments
+        {
+            public SocketGuild SocketGuild { get; set; }
+        }
+        protected virtual void OnGuildUnavailable(GuildUnavailableArguments eventArgs)
         {
             GuildUnavailable?.Invoke(this, eventArgs);
         }
 
         /// <summary> Fired when offline guild members are downloaded. </summary>
-        public event EventHandler<SocketGuild> GuildMembersDownloaded;
-        protected virtual void OnGuildMembersDownloaded(SocketGuild eventArgs)
+        public event EventHandler<GuildMembersDownloadedArguments> GuildMembersDownloaded;
+        public class GuildMembersDownloadedArguments
+        {
+            public SocketGuild SocketGuild { get; set; }
+        }
+        protected virtual void OnGuildMembersDownloaded(GuildMembersDownloadedArguments eventArgs)
         {
             GuildMembersDownloaded?.Invoke(this, eventArgs);
         }
@@ -413,8 +445,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a guild event is created.
         /// </summary>
-        public event EventHandler<SocketGuildEvent> GuildScheduledEventCreated;
-        protected virtual void OnGuildScheduledEventCreated(SocketGuildEvent eventArgs)
+        public event EventHandler<GuildScheduledEventCreatedArguments> GuildScheduledEventCreated;
+        public class GuildScheduledEventCreatedArguments
+        {
+            public SocketGuildEvent SocketGuildEvent { get; set; }
+        }
+        protected virtual void OnGuildScheduledEventCreated(GuildScheduledEventCreatedArguments eventArgs)
         {
             GuildScheduledEventCreated?.Invoke(this, eventArgs);
         }
@@ -436,8 +472,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a guild event is cancelled.
         /// </summary>
-        public event EventHandler<SocketGuildEvent> GuildScheduledEventCancelled;
-        protected virtual void OnGuildScheduledEventCancelled(SocketGuildEvent eventArgs)
+        public event EventHandler<GuildScheduledEventCancelledArguments> GuildScheduledEventCancelled;
+        public class GuildScheduledEventCancelledArguments
+        {
+            public SocketGuildEvent SocketGuildEvent { get; set; }
+        }
+        protected virtual void OnGuildScheduledEventCancelled(GuildScheduledEventCancelledArguments eventArgs)
         {
             GuildScheduledEventCancelled?.Invoke(this, eventArgs);
         }
@@ -445,8 +485,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a guild event is completed.
         /// </summary>
-        public event EventHandler<SocketGuildEvent> GuildScheduledEventCompleted;
-        protected virtual void OnGuildScheduledEventCompleted(SocketGuildEvent eventArgs)
+        public event EventHandler<GuildScheduledEventCompletedArguments> GuildScheduledEventCompleted;
+        public class GuildScheduledEventCompletedArguments
+        {
+            public SocketGuildEvent SocketGuildEvent { get; set; }
+        }
+        protected virtual void OnGuildScheduledEventCompleted(GuildScheduledEventCompletedArguments eventArgs)
         {
             GuildScheduledEventCompleted?.Invoke(this, eventArgs);
         }
@@ -454,8 +498,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a guild event is started.
         /// </summary>
-        public event EventHandler<SocketGuildEvent> GuildScheduledEventStarted;
-        protected virtual void OnGuildScheduledEventStarted(SocketGuildEvent eventArgs)
+        public event EventHandler<GuildScheduledEventStartedArguments> GuildScheduledEventStarted;
+        public class GuildScheduledEventStartedArguments
+        {
+            public SocketGuildEvent SocketGuildEvent { get; set; }
+        }
+        protected virtual void OnGuildScheduledEventStarted(GuildScheduledEventStartedArguments eventArgs)
         {
             GuildScheduledEventStarted?.Invoke(this, eventArgs);
         }
@@ -487,15 +535,23 @@ namespace Discord.WebSocket
         #region Integrations
 
         /// <summary> Fired when an integration is created. </summary>
-        public event EventHandler<IIntegration> IntegrationCreated;
-        protected virtual void OnIntegrationCreated(IIntegration eventArgs)
+        public event EventHandler<IntegrationCreatedArguments> IntegrationCreated;
+        public class IntegrationCreatedArguments
+        {
+            public IIntegration Integration { get; set; }
+        }
+        protected virtual void OnIntegrationCreated(IntegrationCreatedArguments eventArgs)
         {
             IntegrationCreated?.Invoke(this, eventArgs);
         }
 
         /// <summary> Fired when an integration is updated. </summary>
-        public event EventHandler<IIntegration> IntegrationUpdated;
-        protected virtual void OnIntegrationUpdated(IIntegration eventArgs)
+        public event EventHandler<IntegrationUpdatedArguments> IntegrationUpdated;
+        public class IntegrationUpdatedArguments
+        {
+            public IIntegration Integration { get; set; }
+        }
+        protected virtual void OnIntegrationUpdated(IntegrationUpdatedArguments eventArgs)
         {
             IntegrationUpdated?.Invoke(this, eventArgs);
         }
@@ -518,8 +574,12 @@ namespace Discord.WebSocket
         #region Users
 
         /// <summary> Fired when a user joins a guild. </summary>
-        public event EventHandler<SocketGuildUser> UserJoined;
-        protected virtual void OnUserJoined(SocketGuildUser eventArgs)
+        public event EventHandler<UserJoinedArguments> UserJoined;
+        public class UserJoinedArguments
+        {
+            public SocketGuildUser User { get; set; }
+        }
+        protected virtual void OnUserJoined(UserJoinedArguments eventArgs)
         {
             UserJoined?.Invoke(this, eventArgs);
         }
@@ -598,8 +658,12 @@ namespace Discord.WebSocket
         }
 
         /// <summary> Fired when the bot connects to a Discord voice server. </summary>
-        public event EventHandler<SocketVoiceServer> VoiceServerUpdated;
-        protected virtual void OnVoiceServerUpdated(SocketVoiceServer eventArgs)
+        public event EventHandler<VoiceServerUpdatedArguments> VoiceServerUpdated;
+        public class VoiceServerUpdatedArguments
+        {
+            public SocketVoiceServer SocketVoiceServer { get; set; }
+        }
+        protected virtual void OnVoiceServerUpdated(VoiceServerUpdatedArguments eventArgs)
         {
             VoiceServerUpdated?.Invoke(this, eventArgs);
         }
@@ -629,15 +693,23 @@ namespace Discord.WebSocket
         }
 
         /// <summary> Fired when a user joins a group channel. </summary>
-        public event EventHandler<SocketGroupUser> RecipientAdded;
-        protected virtual void OnRecipientAdded(SocketGroupUser eventArgs)
+        public event EventHandler<RecipientAddedArguments> RecipientAdded;
+        public class RecipientAddedArguments
+        {
+            public SocketGroupUser SocketGroupUser { get; set; }
+        }
+        protected virtual void OnRecipientAdded(RecipientAddedArguments eventArgs)
         {
             RecipientAdded?.Invoke(this, eventArgs);
         }
 
         /// <summary> Fired when a user is removed from a group channel. </summary>
-        public event EventHandler<SocketGroupUser> RecipientRemoved;
-        protected virtual void OnRecipientRemoved(SocketGroupUser eventArgs)
+        public event EventHandler<RecipientRemovedArguments> RecipientRemoved;
+        public class RecipientRemovedArguments
+        {
+            public SocketGroupUser SocketGroupUser { get; set; }
+        }
+        protected virtual void OnRecipientRemoved(RecipientRemovedArguments eventArgs)
         {
             RecipientRemoved?.Invoke(this, eventArgs);
         }
@@ -675,8 +747,12 @@ namespace Discord.WebSocket
         ///         The invite created will be passed into the <see cref="SocketInvite"/> parameter.
         ///     </para>
         /// </remarks>
-        public event EventHandler<SocketInvite> InviteCreated;
-        protected virtual void OnInviteCreated(SocketInvite eventArgs)
+        public event EventHandler<InviteCreatedArguments> InviteCreated;
+        public class InviteCreatedArguments
+        {
+            public SocketInvite SocketInvite { get; set; }
+        }
+        protected virtual void OnInviteCreated(InviteCreatedArguments eventArgs)
         {
             InviteCreated?.Invoke(this, eventArgs);
         }
@@ -724,8 +800,12 @@ namespace Discord.WebSocket
         ///         The interaction created will be passed into the <see cref="SocketInteraction"/> parameter.
         ///     </para>
         /// </remarks>
-        public event EventHandler<SocketInteraction> InteractionCreated;
-        protected virtual void OnInteractionCreated(SocketInteraction eventArgs)
+        public event EventHandler<InteractionCreatedArguments> InteractionCreated;
+        public class InteractionCreatedArguments
+        {
+            public SocketInteraction SocketInteraction { get; set; }
+        }
+        protected virtual void OnInteractionCreated(InteractionCreatedArguments eventArgs)
         {
             InteractionCreated?.Invoke(this, eventArgs);
         }
@@ -733,8 +813,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a button is clicked and its interaction is received.
         /// </summary>
-        public event EventHandler<SocketMessageComponent> ButtonExecuted;
-        protected virtual void OnButtonExecuted(SocketMessageComponent eventArgs)
+        public event EventHandler<ButtonExecutedArguments> ButtonExecuted;
+        public class ButtonExecutedArguments
+        {
+            public SocketMessageComponent SocketMessageComponent { get; set; }
+        }
+        protected virtual void OnButtonExecuted(ButtonExecutedArguments eventArgs)
         {
             ButtonExecuted?.Invoke(this, eventArgs);
         }
@@ -742,8 +826,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a select menu is used and its interaction is received.
         /// </summary>
-        public event EventHandler<SocketMessageComponent> SelectMenuExecuted;
-        protected virtual void OnSelectMenuExecuted(SocketMessageComponent eventArgs)
+        public event EventHandler<SelectMenuExecutedArguments> SelectMenuExecuted;
+        public class SelectMenuExecutedArguments
+        {
+            public SocketMessageComponent SocketMessageComponent { get; set; }
+        }
+        protected virtual void OnSelectMenuExecuted(SelectMenuExecutedArguments eventArgs)
         {
             SelectMenuExecuted?.Invoke(this, eventArgs);
         }
@@ -751,8 +839,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a slash command is used and its interaction is received.
         /// </summary>
-        public event EventHandler<SocketSlashCommand> SlashCommandExecuted;
-        protected virtual void OnSlashCommandExecuted(SocketSlashCommand eventArgs)
+        public event EventHandler<SlashCommandExecutedArguments> SlashCommandExecuted;
+        public class SlashCommandExecutedArguments
+        {
+            public SocketSlashCommand SocketSlashCommand { get; set; }
+        }
+        protected virtual void OnSlashCommandExecuted(SlashCommandExecutedArguments eventArgs)
         {
             SlashCommandExecuted?.Invoke(this, eventArgs);
         }
@@ -760,8 +852,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a user command is used and its interaction is received.
         /// </summary>
-        public event EventHandler<SocketUserCommand> UserCommandExecuted;
-        protected virtual void OnUserCommandExecuted(SocketUserCommand eventArgs)
+        public event EventHandler<UserCommandExecutedArguments> UserCommandExecuted;
+        public class UserCommandExecutedArguments
+        {
+            public SocketUserCommand SocketUserCommand { get; set; }
+        }
+        protected virtual void OnUserCommandExecuted(UserCommandExecutedArguments eventArgs)
         {
             UserCommandExecuted?.Invoke(this, eventArgs);
         }
@@ -769,8 +865,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a message command is used and its interaction is received.
         /// </summary>
-        public event EventHandler<SocketMessageCommand> MessageCommandExecuted;
-        protected virtual void OnMessageCommandExecuted(SocketMessageCommand eventArgs)
+        public event EventHandler<MessageCommandExecutedArguments> MessageCommandExecuted;
+        public class MessageCommandExecutedArguments
+        {
+            public SocketMessageCommand SocketMessageCommand { get; set; }
+        }
+        protected virtual void OnMessageCommandExecuted(MessageCommandExecutedArguments eventArgs)
         {
             MessageCommandExecuted?.Invoke(this, eventArgs);
         }
@@ -778,8 +878,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when an autocomplete is used and its interaction is received.
         /// </summary>
-        public event EventHandler<SocketAutocompleteInteraction> AutocompleteExecuted;
-        protected virtual void OnAutocompleteExecuted(SocketAutocompleteInteraction eventArgs)
+        public event EventHandler<AutocompleteExecutedArguments> AutocompleteExecuted;
+        public class AutocompleteExecutedArguments
+        {
+            public SocketAutocompleteInteraction SocketAutocompleteInteraction { get; set; }
+        }
+        protected virtual void OnAutocompleteExecuted(AutocompleteExecutedArguments eventArgs)
         {
             AutocompleteExecuted?.Invoke(this, eventArgs);
         }
@@ -787,8 +891,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a modal is submitted.
         /// </summary>
-        public event EventHandler<SocketModal> ModalSubmitted;
-        protected virtual void OnModalSubmitted(SocketModal eventArgs)
+        public event EventHandler<ModalSubmittedArguments> ModalSubmitted;
+        public class ModalSubmittedArguments
+        {
+            public SocketModal SocketModal { get; set; }
+        }
+        protected virtual void OnModalSubmitted(ModalSubmittedArguments eventArgs)
         {
             ModalSubmitted?.Invoke(this, eventArgs);
         }
@@ -808,8 +916,12 @@ namespace Discord.WebSocket
         ///         <b>This event is an undocumented discord event and may break at any time, its not recommended to rely on this event</b>
         ///     </note>
         /// </remarks>
-        public event EventHandler<SocketApplicationCommand> ApplicationCommandCreated;
-        protected virtual void OnApplicationCommandCreated(SocketApplicationCommand eventArgs)
+        public event EventHandler<ApplicationCommandCreatedArguments> ApplicationCommandCreated;
+        public class ApplicationCommandCreatedArguments
+        {
+            public SocketApplicationCommand SocketApplicationCommand { get; set; }
+        }
+        protected virtual void OnApplicationCommandCreated(ApplicationCommandCreatedArguments eventArgs)
         {
             ApplicationCommandCreated?.Invoke(this, eventArgs);
         }
@@ -829,8 +941,12 @@ namespace Discord.WebSocket
         ///         <b>This event is an undocumented discord event and may break at any time, its not recommended to rely on this event</b>
         ///     </note>
         /// </remarks>
-        public event EventHandler<SocketApplicationCommand> ApplicationCommandUpdated;
-        protected virtual void OnApplicationCommandUpdated(SocketApplicationCommand eventArgs)
+        public event EventHandler<ApplicationCommandUpdatedArguments> ApplicationCommandUpdated;
+        public class ApplicationCommandUpdatedArguments
+        {
+            public SocketApplicationCommand SocketSlashCommand { get; set; }
+        }
+        protected virtual void OnApplicationCommandUpdated(ApplicationCommandUpdatedArguments eventArgs)
         {
             ApplicationCommandUpdated?.Invoke(this, eventArgs);
         }
@@ -850,8 +966,12 @@ namespace Discord.WebSocket
         ///         <b>This event is an undocumented discord event and may break at any time, its not recommended to rely on this event</b>
         ///     </note>
         /// </remarks>
-        public event EventHandler<SocketApplicationCommand> ApplicationCommandDeleted;
-        protected virtual void OnApplicationCommandDeleted(SocketApplicationCommand eventArgs)
+        public event EventHandler<ApplicationCommandDeletedArguments> ApplicationCommandDeleted;
+        public class ApplicationCommandDeletedArguments
+        {
+            public SocketApplicationCommand SocketApplicationCommand { get; set; }
+        }
+        protected virtual void OnApplicationCommandDeleted(ApplicationCommandDeletedArguments eventArgs)
         {
             ApplicationCommandDeleted?.Invoke(this, eventArgs);
         }
@@ -859,8 +979,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a thread is created within a guild, or when the current user is added to a thread.
         /// </summary>
-        public event EventHandler<SocketThreadChannel> ThreadCreated;
-        protected virtual void OnThreadCreated(SocketThreadChannel eventArgs)
+        public event EventHandler<ThreadCreatedArguments> ThreadCreated;
+        public class ThreadCreatedArguments
+        {
+            public SocketThreadChannel SocketThreadChannel { get; set; }
+        }
+        protected virtual void OnThreadCreated(ThreadCreatedArguments eventArgs)
         {
             ThreadCreated?.Invoke(this, eventArgs);
         }
@@ -882,8 +1006,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a thread is deleted.
         /// </summary>
-        public event EventHandler<Cacheable<SocketThreadChannel, ulong>> ThreadDeleted;
-        protected virtual void OnThreadDeleted(Cacheable<SocketThreadChannel, ulong> eventArgs)
+        public event EventHandler<ThreadDeletedArguments> ThreadDeleted;
+        public class ThreadDeletedArguments
+        {
+            public Cacheable<SocketThreadChannel, ulong> ThreadChannel { get; set; }
+        }
+        protected virtual void OnThreadDeleted(ThreadDeletedArguments eventArgs)
         {
             ThreadDeleted?.Invoke(this, eventArgs);
         }
@@ -891,8 +1019,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a user joins a thread
         /// </summary>
-        public event EventHandler<SocketThreadUser> ThreadMemberJoined;
-        protected virtual void OnThreadMemberJoined(SocketThreadUser eventArgs)
+        public event EventHandler<ThreadMemberJoinedArguments> ThreadMemberJoined;
+        public class ThreadMemberJoinedArguments
+        {
+            public SocketThreadUser SocketThreadUser { get; set; }
+        }
+        protected virtual void OnThreadMemberJoined(ThreadMemberJoinedArguments eventArgs)
         {
             ThreadMemberJoined?.Invoke(this, eventArgs);
         }
@@ -900,8 +1032,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a user leaves a thread
         /// </summary>
-        public event EventHandler<SocketThreadUser> ThreadMemberLeft;
-        protected virtual void OnThreadMemberLeft(SocketThreadUser eventArgs)
+        public event EventHandler<ThreadMemberLeftArguments> ThreadMemberLeft;
+        public class ThreadMemberLeftArguments
+        {
+            public SocketThreadUser SocketThreadUser { get; set; }
+        }
+        protected virtual void OnThreadMemberLeft(ThreadMemberLeftArguments eventArgs)
         {
             ThreadMemberLeft?.Invoke(this, eventArgs);
         }
@@ -909,8 +1045,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a stage is started.
         /// </summary>
-        public event EventHandler<SocketStageChannel> StageStarted;
-        protected virtual void OnStageStarted(SocketStageChannel eventArgs)
+        public event EventHandler<StageStartedArguments> StageStarted;
+        public class StageStartedArguments
+        {
+            public SocketStageChannel SocketStageChannel { get; set; }
+        }
+        protected virtual void OnStageStarted(StageStartedArguments eventArgs)
         {
             StageStarted?.Invoke(this, eventArgs);
         }
@@ -918,8 +1058,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a stage ends.
         /// </summary>
-        public event EventHandler<SocketStageChannel> StageEnded;
-        protected virtual void OnStageEnded(SocketStageChannel eventArgs)
+        public event EventHandler<StageEndedArguments> StageEnded;
+        public class StageEndedArguments
+        {
+            public SocketStageChannel SocketStageChannel { get; set; }
+        }
+        protected virtual void OnStageEnded(StageEndedArguments eventArgs)
         {
             StageEnded?.Invoke(this, eventArgs);
         }
@@ -983,8 +1127,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a sticker in a guild is created.
         /// </summary>
-        public event EventHandler<SocketCustomSticker> GuildStickerCreated;
-        protected virtual void OnGuildStickerCreated(SocketCustomSticker eventArgs)
+        public event EventHandler<GuildStickerCreatedArguments> GuildStickerCreated;
+        public class GuildStickerCreatedArguments
+        {
+            public SocketCustomSticker SocketCustomSticker { get; set; }
+        }
+        protected virtual void OnGuildStickerCreated(GuildStickerCreatedArguments  eventArgs)
         {
             GuildStickerCreated?.Invoke(this, eventArgs);
         }
@@ -1006,8 +1154,12 @@ namespace Discord.WebSocket
         /// <summary>
         ///     Fired when a sticker in a guild is deleted.
         /// </summary>
-        public event EventHandler<SocketCustomSticker> GuildStickerDeleted;
-        protected virtual void OnGuildStickerDeleted(SocketCustomSticker eventArgs)
+        public event EventHandler<GuildStickerDeletedArguments> GuildStickerDeleted;
+        public class GuildStickerDeletedArguments
+        {
+            public SocketCustomSticker SocketCustomSticker { get; set; }
+        }
+        protected virtual void OnGuildStickerDeleted(GuildStickerDeletedArguments eventArgs)
         {
             GuildStickerDeleted?.Invoke(this, eventArgs);
         }

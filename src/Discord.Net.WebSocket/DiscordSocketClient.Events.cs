@@ -15,8 +15,12 @@ namespace Discord.WebSocket
         }
 
         /// <summary> Fired when disconnected to the Discord gateway. </summary>
-        public event EventHandler<Exception> Disconnected;
-        protected virtual void OnDisconnected(Exception eventArgs)
+        public event EventHandler<DisconnectedArguments> Disconnected;
+        public class DisconnectedArguments
+        {
+            public Exception Exception { get; set; }
+        }
+        protected virtual void OnDisconnected(DisconnectedArguments eventArgs)
         {
             Disconnected?.Invoke(this, eventArgs);
         }
